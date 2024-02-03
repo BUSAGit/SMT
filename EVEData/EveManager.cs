@@ -25,6 +25,7 @@ using Newtonsoft.Json.Linq;
 using EVEData.Utils.WindowsManager;
 using System.Reflection.Metadata;
 
+
 namespace SMT.EVEData
 {
     /// <summary>
@@ -69,6 +70,12 @@ namespace SMT.EVEData
         private bool WatcherThreadShouldTerminate;
 
         /// <summary>
+        /// SMT windows management for opening specific eve clients
+        /// </summary>
+        private SMTWindowsManager smtWindowManager;
+
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="EveManager" /> class
         /// </summary>
         public EveManager(string version)
@@ -107,62 +114,9 @@ namespace SMT.EVEData
             ServerInfo = new EVEData.Server();
             Coalitions = new List<Coalition>();
 
-            FetchAllRunningEveClients();
-        }
+            smtWindowManager = new SMTWindowsManager();
 
-        public IList<IProcessInfo> ListOfProcesses;
-
-        public void FetchAllRunningEveClients()
-        {
-            ListOfProcesses = new List<IProcessInfo>(16);
-
-            // ToDo : encapuslate this in a Windows Instance Manager.
-            // Iterate through all the proccess and find ExeFile.exe (eve online)
-            foreach (Process process in Process.GetProcesses())
-            {
-                string processName = process.ProcessName;
-                if (!String.Equals(processName, "ExeFile", StringComparison.OrdinalIgnoreCase)) //ToDo : unhack the string
-                {
-                    continue;
-                }
-
-                IntPtr mainWindowHandle = process.MainWindowHandle;
-                if (mainWindowHandle == IntPtr.Zero)
-                {
-                    continue; // No need to monitor non-visual processes
-                }
-
-                // Fetch Exe's Windows Name
-                string mainWindowTitle = process.MainWindowTitle;
-
-                ListOfProcesses.Add(new ProcessInfo(mainWindowHandle, mainWindowTitle));
-            }
-        }
-
-        public void OpenWindow(string charactername)
-        {
-            // Find the character name through the list of processes
-            foreach (ProcessInfo process in ListOfProcesses)
-            {
-                IntPtr TestHandle = new IntPtr(); // temp allocation
-                string processname = process.Title;
-
-                // Open that window with the characters name in the exe.
-                // Todo : solve duplicate names with jr. at the end.
-                if (processname.Contains(charactername))
-                {
-                    TestHandle = process.Handle;
-                }
-
-                User32NativeMethods.SetForegroundWindow(TestHandle);
-
-                int style = User32NativeMethods.GetWindowLong(TestHandle, InteropConstants.GWL_STYLE);
-
-                if ((style & InteropConstants.WS_MINIMIZE) == InteropConstants.WS_MINIMIZE)
-                {
-                    User32NativeMethods.ShowWindowAsync(TestHandle, InteropConstants.SW_RESTORE);
-                }
-            }
+            smtWindowManager.FetchAllRunningEveClients();
         }
 
         /// <summary>
@@ -420,6 +374,18 @@ namespace SMT.EVEData
         /// </summary>
         private Dictionary<long, System> IDToSystem { get; }
 
+        // ====================================================================================================
+        // Functions 
+
+        /// <summary>
+        /// calls upon SMT's Window Manager to open the character's window instance.
+        /// </summary>
+        /// <param name="characterName"></param>
+        public void OpenEveClientWindow(string characterName)
+        {
+            smtWindowManager.OpenWindow(characterName);
+        }
+
         /// <summary>
         /// Scrape the maps from dotlan and initialise the region data from dotlan
         /// </summary>
@@ -511,8 +477,6 @@ namespace SMT.EVEData
             // update the region cache
             foreach (MapRegion rd in Regions)
             {
-
-
                 string localSVG = sourceFolder + @"\data\SourceMaps\raw\" + rd.DotLanRef + "_layout.svg";
 
                 if (!File.Exists(localSVG))
@@ -3013,21 +2977,10 @@ namespace SMT.EVEData
                                 {
                                     SpecialRatEvent(characterName);
                                     lc.GameLogWarningText = line;
+                                    mLimitNotifications = true;
+                                    RunNotificationLimiter(TimeSpan.FromSeconds(10));
                                 }
                             }
-
-
-                            // Alerts when a certain rat hits you
-                            /*
-                            if (line.Contains("Pith Massacrer"))
-                            {
-                                if (ShipDecloakedEvent != null)
-                                {
-                                    ShipDecloakedEvent(characterName, line);
-                                    lc.GameLogWarningText = line;
-                                }
-                            }
-                            */
                         }
                     }
 
@@ -3041,6 +2994,19 @@ namespace SMT.EVEData
             }
             catch
             {
+            }
+        }
+
+        private PeriodicTimer timer;
+
+        private bool mLimitNotifications;
+        async Task RunNotificationLimiter(TimeSpan timeSpan)
+        {
+            timer = new PeriodicTimer(timeSpan);
+            while (await timer.WaitForNextTickAsync())
+            {
+                mLimitNotifications = false ;
+                return;
             }
         }
 

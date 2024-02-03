@@ -359,7 +359,7 @@ namespace SMT
                 if (args.Contains("Rat"))
                 {
                     string charName = args["Rat"];
-                    EVEManager.OpenWindow(charName);
+                    EVEManager.OpenEveClientWindow(charName);
                 }
             };
 
