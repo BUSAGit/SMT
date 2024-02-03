@@ -59,7 +59,7 @@
                 </MenuItem>
 
                 <MenuItem Header="Data"  Height="Auto">
-                    <MenuItem Header="Force ESI Update" Click="ForceESIUpdate_MenuItem_Click" Visibility="Hidden" />
+                    <MenuItem Header="Force ESI Update" Click="ForceESIUpdate_MenuItem_Click"/> <!-- ToDo, Make Time Limit for how many times you can force !! -->
                     <MenuItem Header="Clear Old Eve logs" Click="ClearOldEVELogs_Click" />
                 </MenuItem>
 

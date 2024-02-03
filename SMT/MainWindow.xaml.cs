@@ -33,6 +33,8 @@ namespace SMT
         private Overlay overlayWindow;
 
         private MediaPlayer mediaPlayer;
+        private MediaPlayer coinMediaPlayer;
+
         private PreferencesWindow preferencesWindow;
 
         private int uiRefreshCounter = 0;
@@ -62,6 +64,10 @@ namespace SMT
             mediaPlayer = new MediaPlayer();
             Uri woopUri = new Uri(AppDomain.CurrentDomain.BaseDirectory + @"\Sounds\woop.mp3");
             mediaPlayer.Open(woopUri);
+
+            coinMediaPlayer = new MediaPlayer();
+            Uri coinUri = new Uri(AppDomain.CurrentDomain.BaseDirectory + @"\Sounds\coin.mp3");
+            coinMediaPlayer.Open(coinUri);
 
             CharacterNameIDCache = new Dictionary<string, long>();
             CharacterIDNameCache = new Dictionary<long, string>();
@@ -286,6 +292,9 @@ namespace SMT
             EVEManager.IntelUpdatedEvent += OnIntelUpdated;
             EVEManager.GameLogAddedEvent += OnGamelogUpdated;
             EVEManager.ShipDecloakedEvent += OnShipDecloaked;
+            EVEManager.SpecialRatEvent += OnSpecialRat;
+
+
             EVEManager.CombatEvent += OnCombatEvent;
 
             uiRefreshTimer = new System.Windows.Threading.DispatcherTimer();
@@ -345,6 +354,12 @@ namespace SMT
                             break;
                         }
                     }
+                }
+
+                if (args.Contains("Rat"))
+                {
+                    string charName = args["Rat"];
+                    EVEManager.OpenWindow(charName);
                 }
             };
 
@@ -1233,24 +1248,25 @@ namespace SMT
                             {
                                 try
                                 {
-                                  // Requires Microsoft.Toolkit.Uwp.Notifications NuGet package version 7.0 or greater
-                                  ToastContentBuilder tb = new ToastContentBuilder();
-                                  tb.AddText("SMT Alert");
-                                  tb.AddText("Character : " + character + "(" + lc.Location + ")");
+                                    // Requires Microsoft.Toolkit.Uwp.Notifications NuGet package version 7.0 or greater
+                                    ToastContentBuilder tb = new ToastContentBuilder();
+                                    tb.AddText("SMT Alert");
+                                    tb.AddText("Character : " + character + "( " + lc.Location + " ) ");
 
-                                  // add the character portrait if we have one
-                                  if (lc.PortraitLocation != null)
-                                  {
-                                      tb.AddInlineImage(lc.PortraitLocation);
-                                  }
+                                    // add the character portrait if we have one
+                                    if (lc.PortraitLocation != null)
+                                    {
+                                        tb.AddInlineImage(lc.PortraitLocation);
+                                    }
 
-                                  tb.AddText(text);
-                                  tb.AddArgument("character", character);
-                                  tb.SetToastScenario(ToastScenario.Alarm);
-                                  tb.SetToastDuration(ToastDuration.Long);
-                                  Uri woopUri = new Uri(AppDomain.CurrentDomain.BaseDirectory + @"\Sounds\woop.mp3");
-                                  tb.AddAudio(woopUri);
-                                  tb.Show();
+                                    tb.AddText(text);
+                                    tb.AddArgument("character", character);
+                                    tb.SetToastScenario(ToastScenario.Alarm);
+                                    tb.SetToastDuration(ToastDuration.Long);
+                                    /** Toasting with custom audio does not work atm. */
+                                    Uri woopUri = new Uri(AppDomain.CurrentDomain.BaseDirectory + @"\Sounds\woop.mp3");
+                                    tb.AddAudio(woopUri);
+                                    tb.Show();
                                 }
 
                                 catch
@@ -1258,9 +1274,59 @@ namespace SMT
                                     // sometimes caused by this : 
                                     // https://github.com/CommunityToolkit/WindowsCommunityToolkit/issues/4858
                                 }
+                            }), DispatcherPriority.Normal);
+                        }
+                    }
 
-                          }), DispatcherPriority.Normal, null);
+                    break;
+                }
+            }
+        }
 
+        private void OnSpecialRat(string character)
+        {
+            foreach (LocalCharacter lc in EVEManager.LocalCharacters)
+            {
+                if (lc.Name == character)
+                {
+                    if (lc.ObservatoryDecloakWarningEnabled)
+                    {
+                        if (OperatingSystem.IsWindows() && OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763, 0))
+                        {
+                            Application.Current.Dispatcher.Invoke((Action)(() =>
+                            {
+                                try
+                                {
+                                    // Requires Microsoft.Toolkit.Uwp.Notifications NuGet package version 7.0 or greater
+                                    ToastContentBuilder tb = new ToastContentBuilder();
+                                    tb.AddText("SMT Alert");
+                                    tb.AddText("Character : " + character + "( " + lc.Location + " )");
+
+                                    // add the character portrait if we have one
+                                    if (lc.PortraitLocation != null)
+                                    {
+                                        tb.AddInlineImage(lc.PortraitLocation);
+                                    }
+
+                                    tb.AddText("Special Rat has spawned.");
+                                    tb.AddArgument("Rat", character);
+                                    tb.SetToastScenario(ToastScenario.Alarm);
+                                    tb.SetToastDuration(ToastDuration.Long);
+
+                                    coinMediaPlayer.Stop();
+                                    coinMediaPlayer.Volume = MapConf.IntelSoundVolume;
+                                    coinMediaPlayer.Position = new TimeSpan(0, 0, 0);
+                                    coinMediaPlayer.Play();
+
+                                    tb.Show();
+                                }
+
+                                catch
+                                {
+                                    // sometimes caused by this : 
+                                    // https://github.com/CommunityToolkit/WindowsCommunityToolkit/issues/4858
+                                }
+                            }), DispatcherPriority.Normal);
                         }
                     }
 

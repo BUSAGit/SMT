@@ -2,6 +2,9 @@
 // EVE Manager
 //-----------------------------------------------------------------------
 
+using System;
+using System.Diagnostics;
+using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.Numerics;
@@ -19,6 +22,8 @@ using HtmlAgilityPack;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using EVEData.Utils.WindowsManager;
+using System.Reflection.Metadata;
 
 namespace SMT.EVEData
 {
@@ -101,6 +106,63 @@ namespace SMT.EVEData
 
             ServerInfo = new EVEData.Server();
             Coalitions = new List<Coalition>();
+
+            FetchAllRunningEveClients();
+        }
+
+        public IList<IProcessInfo> ListOfProcesses;
+
+        public void FetchAllRunningEveClients()
+        {
+            ListOfProcesses = new List<IProcessInfo>(16);
+
+            // ToDo : encapuslate this in a Windows Instance Manager.
+            // Iterate through all the proccess and find ExeFile.exe (eve online)
+            foreach (Process process in Process.GetProcesses())
+            {
+                string processName = process.ProcessName;
+                if (!String.Equals(processName, "ExeFile", StringComparison.OrdinalIgnoreCase)) //ToDo : unhack the string
+                {
+                    continue;
+                }
+
+                IntPtr mainWindowHandle = process.MainWindowHandle;
+                if (mainWindowHandle == IntPtr.Zero)
+                {
+                    continue; // No need to monitor non-visual processes
+                }
+
+                // Fetch Exe's Windows Name
+                string mainWindowTitle = process.MainWindowTitle;
+
+                ListOfProcesses.Add(new ProcessInfo(mainWindowHandle, mainWindowTitle));
+            }
+        }
+
+        public void OpenWindow(string charactername)
+        {
+            // Find the character name through the list of processes
+            foreach (ProcessInfo process in ListOfProcesses)
+            {
+                IntPtr TestHandle = new IntPtr(); // temp allocation
+                string processname = process.Title;
+
+                // Open that window with the characters name in the exe.
+                // Todo : solve duplicate names with jr. at the end.
+                if (processname.Contains(charactername))
+                {
+                    TestHandle = process.Handle;
+                }
+
+                User32NativeMethods.SetForegroundWindow(TestHandle);
+
+                int style = User32NativeMethods.GetWindowLong(TestHandle, InteropConstants.GWL_STYLE);
+
+                if ((style & InteropConstants.WS_MINIMIZE) == InteropConstants.WS_MINIMIZE)
+                {
+                    User32NativeMethods.ShowWindowAsync(TestHandle, InteropConstants.SW_RESTORE);
+                }
+            }
         }
 
         /// <summary>
@@ -142,6 +204,16 @@ namespace SMT.EVEData
         /// Combat Events
         /// </summary>
         public event CombatEventHandler CombatEvent;
+
+        /// <summary>
+        /// Special Rat Event Handler
+        /// </summary>
+        public delegate void SpecialRatEventHandler(string pilot);
+
+        /// <summary>
+        /// Special Rat Event
+        /// </summary>
+        public event SpecialRatEventHandler SpecialRatEvent;
 
         public enum JumpShip
         {
@@ -2398,8 +2470,8 @@ namespace SMT.EVEData
             {
                 EsiUrl = "https://esi.evetech.net/",
                 DataSource = DataSource.Tranquility,
-                ClientId = EveAppConfig.ClientID,
-                SecretKey = "Unneeded",
+                ClientId = "5fb7ba024fea41188a88479f3da20261",
+                SecretKey = "uhNVZrTgseUynnFy38Q6C5mIB4vNxlFo2cVcj9fo",
                 CallbackUrl = EveAppConfig.CallbackURL,
                 UserAgent = "SMT-map-app",
             });
@@ -2933,6 +3005,29 @@ namespace SMT.EVEData
                                     lc.GameLogWarningText = line;
                                 }
                             }
+
+                            // Send Notification if a Special loot rat spawns. ie Infested Carrier, or Dread or Dreadnaught
+                            if (line.Contains("Dread") || line.Contains("Infested"))
+                            {
+                                if (SpecialRatEvent != null)
+                                {
+                                    SpecialRatEvent(characterName);
+                                    lc.GameLogWarningText = line;
+                                }
+                            }
+
+
+                            // Alerts when a certain rat hits you
+                            /*
+                            if (line.Contains("Pith Massacrer"))
+                            {
+                                if (ShipDecloakedEvent != null)
+                                {
+                                    ShipDecloakedEvent(characterName, line);
+                                    lc.GameLogWarningText = line;
+                                }
+                            }
+                            */
                         }
                     }
 
