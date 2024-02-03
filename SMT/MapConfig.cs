@@ -18,6 +18,9 @@ namespace SMT
         private bool m_MinimizeToTray;
         private bool m_CloseToTray;
 
+        private bool m_AlwaysOpen;
+
+
         private bool m_FlashWindow;
         private bool m_FlashWindowOnlyInDangerZone;
 
@@ -166,6 +169,36 @@ namespace SMT
                 OnPropertyChanged("CloseToTray");
             }
         }
+
+        public bool AlwaysOpen
+        {
+            get
+            {
+                return m_AlwaysOpen;
+            }
+            set
+            {
+                m_AlwaysOpen = value;
+                OnPropertyChanged("AlwaysOpen");
+            }
+        }
+
+
+        public bool ShowTrigInvasions
+        {
+            get
+            {
+                return m_ShowTrigInvasions;
+            }
+            set
+            {
+                m_ShowTrigInvasions = value;
+                OnPropertyChanged("ShowTrigInvasions");
+            }
+        }
+
+
+
 
         [Browsable(false)]
         public string DefaultColourSchemeName { get; set; }
@@ -749,19 +782,6 @@ namespace SMT
             {
                 m_ShowToolBox = value;
                 OnPropertyChanged("ShowToolBox");
-            }
-        }
-
-        public bool ShowTrigInvasions
-        {
-            get
-            {
-                return m_ShowTrigInvasions;
-            }
-            set
-            {
-                m_ShowTrigInvasions = value;
-                OnPropertyChanged("ShowTrigInvasions");
             }
         }
 

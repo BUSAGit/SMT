@@ -102,8 +102,6 @@ namespace EVEData.Utils.WindowsManager
 
         public void FetchAllRunningEveClients()
         {
-            IList<IntPtr> knownProcesses = new List<IntPtr>(processCache.Keys);
-            List<IProcessInfo>updatedProcesses = new List<IProcessInfo>(16);
             ListOfProcesses.Clear();
 
             // Iterate through all the proccess and find ExeFile.exe (eve online)

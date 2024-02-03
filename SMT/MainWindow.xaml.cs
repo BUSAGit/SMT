@@ -1319,8 +1319,13 @@ namespace SMT
                                     coinMediaPlayer.Play();
 
                                     tb.Show();
-                                }
 
+                                    // Force Focus Window
+                                    if (MapConf.AlwaysOpen)
+                                    {
+                                        EVEManager.OpenEveClientWindow(character);
+                                    }
+                                }
                                 catch
                                 {
                                     // sometimes caused by this : 
