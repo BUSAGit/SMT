@@ -1753,11 +1753,174 @@ namespace SMT.EVEData
             Serialization.SerializeToDisk<List<System>>(Systems, saveDataFolder + @"\Systems.dat");
         }
 
+        public void RemoveCharacter(LocalCharacter lc)
+        {
+            LocalCharacters.Remove(lc);
+
+            if (LocalCharacterUpdateEvent != null)
+            {
+                LocalCharacterUpdateEvent();
+            }
+        }
+
+        // ==============================================================================================================
+        // Checkers
+
         /// <summary>
         /// Does the System Exist ?
         /// </summary>
         /// <param name="name">Name (not ID) of the system</param>
         public bool DoesSystemExist(string name) => GetEveSystem(name) != null;
+
+
+        // ==============================================================================================================
+        #region Getters
+        // Getters
+
+        /// <summary>
+        /// Get the alliance name from the alliance ID
+        /// </summary>
+        /// <param name="id">Alliance ID</param>
+        /// <returns>Alliance Name</returns>
+        public string GetAllianceName(int id)
+        {
+            string name = string.Empty;
+            if (AllianceIDToName.ContainsKey(id))
+            {
+                name = AllianceIDToName[id];
+            }
+
+            return name;
+        }
+
+        /// <summary>
+        /// Gets the alliance ticker eg "TEST" from the alliance ID
+        /// </summary>
+        /// <param name="id">Alliance ID</param>
+        /// <returns>Alliance Ticker</returns>
+        public string GetAllianceTicker(int id)
+        {
+            string ticker = string.Empty;
+            if (AllianceIDToTicker.ContainsKey(id))
+            {
+                ticker = AllianceIDToTicker[id];
+            }
+
+            return ticker;
+        }
+
+        public string GetCharacterName(int id)
+        {
+            string name = string.Empty;
+            if (CharacterIDToName.ContainsKey(id))
+            {
+                name = CharacterIDToName[id];
+            }
+
+            return name;
+        }
+
+        /// <summary>
+        /// Get a System object from the name, note : for regions which have other region systems in it wont return
+        /// them.. eg TR07-s is on the esoteria map, but the object corresponding to the feythabolis map will be returned
+        /// </summary>
+        /// <param name="name">Name (not ID) of the system</param>
+        public System GetEveSystem(string name)
+        {
+            if (NameToSystem.ContainsKey(name))
+            {
+                return NameToSystem[name];
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Get a System object from the ID
+        /// </summary>
+        /// <param name="id">ID of the system</param>
+        public System GetEveSystemFromID(long id)
+        {
+            if (IDToSystem.ContainsKey(id))
+            {
+                return IDToSystem[id];
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Get a System name from the ID
+        /// </summary>
+        /// <param name="id">ID of the system</param>
+        public string GetEveSystemNameFromID(long id)
+        {
+            System s = GetEveSystemFromID(id);
+            if (s != null)
+            {
+                return s.Name;
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Calculate the range between the two systems
+        /// </summary>
+        public decimal GetRangeBetweenSystems(string from, string to)
+        {
+            System systemFrom = GetEveSystem(from);
+            System systemTo = GetEveSystem(to);
+
+            if (systemFrom == null || systemTo == null || from == to)
+            {
+                return 0.0M;
+            }
+
+            decimal x = systemFrom.ActualX - systemTo.ActualX;
+            decimal y = systemFrom.ActualY - systemTo.ActualY;
+            decimal z = systemFrom.ActualZ - systemTo.ActualZ;
+
+            decimal length = DecimalMath.DecimalEx.Sqrt((x * x) + (y * y) + (z * z));
+
+            return length;
+        }
+
+        /// <summary>
+        /// Get the MapRegion from the name
+        /// </summary>
+        /// <param name="name">Name of the Region</param>
+        /// <returns>Region Object</returns>
+        public MapRegion GetRegion(string name)
+        {
+            foreach (MapRegion reg in Regions)
+            {
+                if (reg.Name == name)
+                {
+                    return reg;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Get the System name from the System ID
+        /// </summary>
+        /// <param name="id">System ID</param>
+        /// <returns>System Name</returns>
+        public string GetSystemNameFromSystemID(long id)
+        {
+            string name = string.Empty;
+            if (SystemIDToName.ContainsKey(id))
+            {
+                name = SystemIDToName[id];
+            }
+
+            return name;
+        }
+
+        #endregion
 
         // ==============================================================================================================
         #region ESI related Functions
@@ -2098,6 +2261,7 @@ namespace SMT.EVEData
             {
             }
         }
+
         private async void UpdateSovStructureUpdate()
         {
             try
@@ -2133,6 +2297,227 @@ namespace SMT.EVEData
             catch { }
         }
 
+        public async void UpdateFactionWarfareInfo()
+        {
+            FactionWarfareSystems.Clear();
+
+            try
+            {
+                ESI.NET.EsiResponse<List<ESI.NET.Models.FactionWarfare.FactionWarfareSystem>> esr = await ESIClient.FactionWarfare.Systems();
+
+                string debugListofSytems = "";
+
+                if (ESIHelpers.ValidateESICall<List<ESI.NET.Models.FactionWarfare.FactionWarfareSystem>>(esr))
+                {
+                    foreach (ESI.NET.Models.FactionWarfare.FactionWarfareSystem i in esr.Data)
+                    {
+                        FactionWarfareSystemInfo fwsi = new FactionWarfareSystemInfo();
+                        fwsi.SystemState = FactionWarfareSystemInfo.State.None;
+
+                        fwsi.OccupierID = i.OccupierFactionId;
+                        fwsi.OccupierName = FactionWarfareSystemInfo.OwnerIDToName(i.OccupierFactionId);
+
+                        fwsi.OwnerID = i.OwnerFactionId;
+                        fwsi.OwnerName = FactionWarfareSystemInfo.OwnerIDToName(i.OwnerFactionId);
+
+                        fwsi.SystemID = i.SolarSystemId;
+                        fwsi.SystemName = GetEveSystemNameFromID(i.SolarSystemId);
+                        fwsi.LinkSystemID = 0;
+                        fwsi.VictoryPoints = i.VictoryPoints;
+                        fwsi.VictoryPointsThreshold = i.VictoryPointsThreshold;
+
+                        FactionWarfareSystems.Add(fwsi);
+
+                        debugListofSytems += fwsi.SystemName + "\n";
+                    }
+                }
+
+                // step 1, identify all the Frontline systems, these will be systems with connections to other systems with a different occupier
+                foreach (FactionWarfareSystemInfo fws in FactionWarfareSystems)
+                {
+                    System s = GetEveSystemFromID(fws.SystemID);
+                    foreach (string js in s.Jumps)
+                    {
+                        foreach (FactionWarfareSystemInfo fwss in FactionWarfareSystems)
+                        {
+                            if (fwss.SystemName == js && fwss.OccupierID != fws.OccupierID)
+                            {
+                                fwss.SystemState = FactionWarfareSystemInfo.State.Frontline;
+                                fws.SystemState = FactionWarfareSystemInfo.State.Frontline;
+                            }
+                        }
+                    }
+                }
+
+                // step 2, itendify all commandline operations by flooding out one from the frontlines
+                foreach (FactionWarfareSystemInfo fws in FactionWarfareSystems)
+                {
+                    if (fws.SystemState == FactionWarfareSystemInfo.State.Frontline)
+                    {
+                        System s = GetEveSystemFromID(fws.SystemID);
+
+                        foreach (string js in s.Jumps)
+                        {
+                            foreach (FactionWarfareSystemInfo fwss in FactionWarfareSystems)
+                            {
+                                if (fwss.SystemName == js && fwss.SystemState == FactionWarfareSystemInfo.State.None && fwss.OccupierID == fws.OccupierID)
+                                {
+                                    fwss.SystemState = FactionWarfareSystemInfo.State.CommandLineOperation;
+                                    fwss.LinkSystemID = fws.SystemID;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // step 3, itendify all Rearguard operations by flooding out one from the command lines
+                foreach (FactionWarfareSystemInfo fws in FactionWarfareSystems)
+                {
+                    if (fws.SystemState == FactionWarfareSystemInfo.State.CommandLineOperation)
+                    {
+                        System s = GetEveSystemFromID(fws.SystemID);
+
+                        foreach (string js in s.Jumps)
+                        {
+                            foreach (FactionWarfareSystemInfo fwss in FactionWarfareSystems)
+                            {
+                                if (fwss.SystemName == js && fwss.SystemState == FactionWarfareSystemInfo.State.None && fwss.OccupierID == fws.OccupierID)
+                                {
+                                    fwss.SystemState = FactionWarfareSystemInfo.State.Rearguard;
+                                    fwss.LinkSystemID = fws.SystemID;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // for ease remove all "none" systems
+                //FactionWarfareSystems.RemoveAll(sys => sys.SystemState == FactionWarfareSystemInfo.State.None);
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Update the Character ID data for specified list
+        /// </summary>
+        public async Task ResolveCharacterIDs(List<int> IDs)
+        {
+            if (IDs.Count == 0)
+            {
+                return;
+            }
+
+            // strip out any ID's we already know..
+            List<int> UnknownIDs = new List<int>();
+            foreach (int l in IDs)
+            {
+                if (!CharacterIDToName.ContainsKey(l))
+                {
+                    UnknownIDs.Add(l);
+                }
+            }
+
+            if (UnknownIDs.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                ESI.NET.EsiResponse<List<ESI.NET.Models.Universe.ResolvedInfo>> esra = await ESIClient.Universe.Names(UnknownIDs);
+                if (ESIHelpers.ValidateESICall<List<ESI.NET.Models.Universe.ResolvedInfo>>(esra))
+                {
+                    foreach (ESI.NET.Models.Universe.ResolvedInfo ri in esra.Data)
+                    {
+                        if (ri.Category == ResolvedInfoCategory.Character)
+                        {
+                            CharacterIDToName[ri.Id] = ri.Name;
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Update the Alliance and Ticker data for specified list
+        /// </summary>
+        public async Task ResolveAllianceIDs(List<int> IDs)
+        {
+            if (IDs.Count == 0)
+            {
+                return;
+            }
+
+            // strip out any ID's we already know..
+            List<int> UnknownIDs = new List<int>();
+            foreach (int l in IDs)
+            {
+                if (!AllianceIDToName.ContainsKey(l) || !AllianceIDToTicker.ContainsKey(l))
+                {
+                    UnknownIDs.Add(l);
+                }
+            }
+
+            if (UnknownIDs.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                ESI.NET.EsiResponse<List<ESI.NET.Models.Universe.ResolvedInfo>> esra = await ESIClient.Universe.Names(UnknownIDs);
+                if (ESIHelpers.ValidateESICall<List<ESI.NET.Models.Universe.ResolvedInfo>>(esra))
+                {
+                    foreach (ESI.NET.Models.Universe.ResolvedInfo ri in esra.Data)
+                    {
+                        if (ri.Category == ResolvedInfoCategory.Alliance)
+                        {
+                            ESI.NET.EsiResponse<ESI.NET.Models.Alliance.Alliance> esraA = await ESIClient.Alliance.Information((int)ri.Id);
+
+                            if (ESIHelpers.ValidateESICall<ESI.NET.Models.Alliance.Alliance>(esraA))
+                            {
+                                AllianceIDToTicker[ri.Id] = esraA.Data.Ticker;
+                                AllianceIDToName[ri.Id] = esraA.Data.Name;
+                            }
+                            else
+                            {
+                                AllianceIDToTicker[ri.Id] = "???????????????";
+                                AllianceIDToName[ri.Id] = "?????";
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Start the download for the Server Info
+        /// </summary>
+        private async void UpdateServerInfo()
+        {
+            try
+            {
+                ESI.NET.EsiResponse<ESI.NET.Models.Status.Status> esr = await ESIClient.Status.Retrieve();
+
+                if (ESIHelpers.ValidateESICall<ESI.NET.Models.Status.Status>(esr))
+                {
+                    ServerInfo.Name = "Tranquility";
+                    ServerInfo.NumPlayers = esr.Data.Players;
+                    ServerInfo.ServerVersion = esr.Data.ServerVersion.ToString();
+                }
+                else
+                {
+                    ServerInfo.Name = "Tranquility";
+                    ServerInfo.NumPlayers = 0;
+                    ServerInfo.ServerVersion = "";
+                }
+            }
+            catch { }
+        }
+
+
         #endregion
 
         // ==============================================================================================================
@@ -2148,6 +2533,7 @@ namespace SMT.EVEData
             ZKillFeed.VerString = VersionStr;
             ZKillFeed.Initialise();
         }
+
         private async void UpdateDotlanKillDeltaInfo()
         {
             foreach (MapRegion mr in Regions)
@@ -2206,9 +2592,94 @@ namespace SMT.EVEData
 
         #endregion
 
+
+        // ==============================================================================================================
+        // Eve-Scout Functions
+
+        /// <summary>
+        /// Update the current Thera Connections from EVE-Scout
+        /// </summary>
+        public async void UpdateTheraConnections()
+        {
+            string theraApiURL = "https://api.eve-scout.com/v2/public/signatures?system_name=Thera";
+            string strContent = string.Empty;
+
+            try
+            {
+                HttpClient hc = new HttpClient();
+                var response = await hc.GetAsync(theraApiURL);
+                response.EnsureSuccessStatusCode();
+                strContent = await response.Content.ReadAsStringAsync();
+
+                JsonTextReader jsr = new JsonTextReader(new StringReader(strContent));
+
+                TheraConnections.Clear();
+
+                /*
+                    new format
+                    
+                    "id": "46",
+                    "created_at": "2023-12-02T11:24:49.000Z",
+                    "created_by_id": 93027866,
+                    "created_by_name": "Das d'Alembert",
+                    "updated_at": "2023-12-02T11:27:01.000Z",
+                    "updated_by_id": 93027866,
+                    "updated_by_name": "Das d'Alembert",
+                    "completed_at": "2023-12-02T11:27:01.000Z",
+                    "completed_by_id": 93027866,
+                    "completed_by_name": "Das d'Alembert",
+                    "completed": true,
+                    "wh_exits_outward": true,
+                    "wh_type": "Q063",
+                    "max_ship_size": "medium",
+                    "expires_at": "2023-12-03T04:24:49.000Z",
+                    "remaining_hours": 14,
+                    "signature_type": "wormhole",
+                    "out_system_id": 31000005,
+                    "out_system_name": "Thera",
+                    "out_signature": "HMM-222",
+                    "in_system_id": 30001715,
+                    "in_system_class": "hs",
+                    "in_system_name": "Moutid",
+                    "in_region_id": 10000020,
+                    "in_region_name": "Tash-Murkon",
+                    "in_signature": "LPI-677"
+                 */
+
+                while (jsr.Read())
+                {
+                    if (jsr.TokenType == JsonToken.StartObject)
+                    {
+                        JObject obj = JObject.Load(jsr);
+                        string inSignatureId = obj["in_signature"].ToString();
+                        string outSignatureId = obj["out_signature"].ToString();
+                        long solarSystemId = long.Parse(obj["in_system_id"].ToString());
+                        string wormHoleEOL = obj["expires_at"].ToString();
+                        string type = obj["signature_type"].ToString();
+
+                        if (type != null && type == "wormhole" && solarSystemId != 0 && wormHoleEOL != null && SystemIDToName.ContainsKey(solarSystemId))
+                        {
+                            System theraConnectionSystem = GetEveSystemFromID(solarSystemId);
+
+                            TheraConnection tc = new TheraConnection(theraConnectionSystem.Name, theraConnectionSystem.Region, inSignatureId, outSignatureId, wormHoleEOL);
+                            TheraConnections.Add(tc);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                return;
+            }
+
+            if (TheraUpdateEvent != null)
+            {
+                TheraUpdateEvent();
+            }
+        }
+
         // ==============================================================================================================
         #region File IO
-        // ==============================================================================================================
         // File Handlers
 
         /// <summary>
@@ -2846,266 +3317,6 @@ namespace SMT.EVEData
             }
         }
 
-
-        #endregion
-
-        /// <summary>
-        /// Get the alliance name from the alliance ID
-        /// </summary>
-        /// <param name="id">Alliance ID</param>
-        /// <returns>Alliance Name</returns>
-        public string GetAllianceName(int id)
-        {
-            string name = string.Empty;
-            if (AllianceIDToName.ContainsKey(id))
-            {
-                name = AllianceIDToName[id];
-            }
-
-            return name;
-        }
-
-        /// <summary>
-        /// Gets the alliance ticker eg "TEST" from the alliance ID
-        /// </summary>
-        /// <param name="id">Alliance ID</param>
-        /// <returns>Alliance Ticker</returns>
-        public string GetAllianceTicker(int id)
-        {
-            string ticker = string.Empty;
-            if (AllianceIDToTicker.ContainsKey(id))
-            {
-                ticker = AllianceIDToTicker[id];
-            }
-
-            return ticker;
-        }
-
-        public string GetCharacterName(int id)
-        {
-            string name = string.Empty;
-            if (CharacterIDToName.ContainsKey(id))
-            {
-                name = CharacterIDToName[id];
-            }
-
-            return name;
-        }
-
-        /// <summary>
-        /// Get a System object from the name, note : for regions which have other region systems in it wont return
-        /// them.. eg TR07-s is on the esoteria map, but the object corresponding to the feythabolis map will be returned
-        /// </summary>
-        /// <param name="name">Name (not ID) of the system</param>
-        public System GetEveSystem(string name)
-        {
-            if (NameToSystem.ContainsKey(name))
-            {
-                return NameToSystem[name];
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Get a System object from the ID
-        /// </summary>
-        /// <param name="id">ID of the system</param>
-        public System GetEveSystemFromID(long id)
-        {
-            if (IDToSystem.ContainsKey(id))
-            {
-                return IDToSystem[id];
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Get a System name from the ID
-        /// </summary>
-        /// <param name="id">ID of the system</param>
-        public string GetEveSystemNameFromID(long id)
-        {
-            System s = GetEveSystemFromID(id);
-            if (s != null)
-            {
-                return s.Name;
-            }
-
-            return string.Empty;
-        }
-
-        /// <summary>
-        /// Calculate the range between the two systems
-        /// </summary>
-        public decimal GetRangeBetweenSystems(string from, string to)
-        {
-            System systemFrom = GetEveSystem(from);
-            System systemTo = GetEveSystem(to);
-
-            if (systemFrom == null || systemTo == null || from == to)
-            {
-                return 0.0M;
-            }
-
-            decimal x = systemFrom.ActualX - systemTo.ActualX;
-            decimal y = systemFrom.ActualY - systemTo.ActualY;
-            decimal z = systemFrom.ActualZ - systemTo.ActualZ;
-
-            decimal length = DecimalMath.DecimalEx.Sqrt((x * x) + (y * y) + (z * z));
-
-            return length;
-        }
-
-        /// <summary>
-        /// Get the MapRegion from the name
-        /// </summary>
-        /// <param name="name">Name of the Region</param>
-        /// <returns>Region Object</returns>
-        public MapRegion GetRegion(string name)
-        {
-            foreach (MapRegion reg in Regions)
-            {
-                if (reg.Name == name)
-                {
-                    return reg;
-                }
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Get the System name from the System ID
-        /// </summary>
-        /// <param name="id">System ID</param>
-        /// <returns>System Name</returns>
-        public string GetSystemNameFromSystemID(long id)
-        {
-            string name = string.Empty;
-            if (SystemIDToName.ContainsKey(id))
-            {
-                name = SystemIDToName[id];
-            }
-
-            return name;
-        }
-
-        public void InitNavigation()
-        {
-            SerializableDictionary<string, List<string>> jumpRangeCache;
-
-            string DataRootPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
-
-            string JRC = Path.Combine(DataRootPath, "JumpRangeCache.dat");
-
-            if (!File.Exists(JRC))
-            {
-                throw new NotImplementedException();
-            }
-            jumpRangeCache = Serialization.DeserializeFromDisk<SerializableDictionary<string, List<string>>>(JRC);
-            Navigation.InitNavigation(NameToSystem.Values.ToList(), JumpBridges, jumpRangeCache);
-
-            InitZarzakhConnections();
-
-        }
-
-        /// <summary>
-        /// Update the Alliance and Ticker data for specified list
-        /// </summary>
-        public async Task ResolveAllianceIDs(List<int> IDs)
-        {
-            if (IDs.Count == 0)
-            {
-                return;
-            }
-
-            // strip out any ID's we already know..
-            List<int> UnknownIDs = new List<int>();
-            foreach (int l in IDs)
-            {
-                if (!AllianceIDToName.ContainsKey(l) || !AllianceIDToTicker.ContainsKey(l))
-                {
-                    UnknownIDs.Add(l);
-                }
-            }
-
-            if (UnknownIDs.Count == 0)
-            {
-                return;
-            }
-
-            try
-            {
-                ESI.NET.EsiResponse<List<ESI.NET.Models.Universe.ResolvedInfo>> esra = await ESIClient.Universe.Names(UnknownIDs);
-                if (ESIHelpers.ValidateESICall<List<ESI.NET.Models.Universe.ResolvedInfo>>(esra))
-                {
-                    foreach (ESI.NET.Models.Universe.ResolvedInfo ri in esra.Data)
-                    {
-                        if (ri.Category == ResolvedInfoCategory.Alliance)
-                        {
-                            ESI.NET.EsiResponse<ESI.NET.Models.Alliance.Alliance> esraA = await ESIClient.Alliance.Information((int)ri.Id);
-
-                            if (ESIHelpers.ValidateESICall<ESI.NET.Models.Alliance.Alliance>(esraA))
-                            {
-                                AllianceIDToTicker[ri.Id] = esraA.Data.Ticker;
-                                AllianceIDToName[ri.Id] = esraA.Data.Name;
-                            }
-                            else
-                            {
-                                AllianceIDToTicker[ri.Id] = "???????????????";
-                                AllianceIDToName[ri.Id] = "?????";
-                            }
-                        }
-                    }
-                }
-            }
-            catch { }
-        }
-
-        /// <summary>
-        /// Update the Character ID data for specified list
-        /// </summary>
-        public async Task ResolveCharacterIDs(List<int> IDs)
-        {
-            if (IDs.Count == 0)
-            {
-                return;
-            }
-
-            // strip out any ID's we already know..
-            List<int> UnknownIDs = new List<int>();
-            foreach (int l in IDs)
-            {
-                if (!CharacterIDToName.ContainsKey(l))
-                {
-                    UnknownIDs.Add(l);
-                }
-            }
-
-            if (UnknownIDs.Count == 0)
-            {
-                return;
-            }
-
-            try
-            {
-                ESI.NET.EsiResponse<List<ESI.NET.Models.Universe.ResolvedInfo>> esra = await ESIClient.Universe.Names(UnknownIDs);
-                if (ESIHelpers.ValidateESICall<List<ESI.NET.Models.Universe.ResolvedInfo>>(esra))
-                {
-                    foreach (ESI.NET.Models.Universe.ResolvedInfo ri in esra.Data)
-                    {
-                        if (ri.Category == ResolvedInfoCategory.Character)
-                        {
-                            CharacterIDToName[ri.Id] = ri.Name;
-                        }
-                    }
-                }
-            }
-            catch { }
-        }
-
         private void LogFileCacheTrigger(List<string> eveLogFolders)
         {
             Thread.CurrentThread.IsBackground = false;
@@ -3163,284 +3374,25 @@ namespace SMT.EVEData
             }
         }
 
-        /// <summary>
-        /// Update the Alliance and Ticker data for all SOV owners in the specified region
-        /// </summary>
-        public void UpdateIDsForMapRegion(string name)
+        #endregion
+
+        public void InitNavigation()
         {
-            MapRegion r = GetRegion(name);
-            if (r == null)
+            SerializableDictionary<string, List<string>> jumpRangeCache;
+
+            string DataRootPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+
+            string JRC = Path.Combine(DataRootPath, "JumpRangeCache.dat");
+
+            if (!File.Exists(JRC))
             {
-                return;
+                throw new NotImplementedException();
             }
+            jumpRangeCache = Serialization.DeserializeFromDisk<SerializableDictionary<string, List<string>>>(JRC);
+            Navigation.InitNavigation(NameToSystem.Values.ToList(), JumpBridges, jumpRangeCache);
 
-            List<int> IDToResolve = new List<int>();
+            InitZarzakhConnections();
 
-            foreach (KeyValuePair<string, MapSystem> kvp in r.MapSystems)
-            {
-                if (kvp.Value.ActualSystem.SOVAllianceTCU != 0 && !AllianceIDToName.ContainsKey(kvp.Value.ActualSystem.SOVAllianceTCU) && !IDToResolve.Contains(kvp.Value.ActualSystem.SOVAllianceTCU))
-                {
-                    IDToResolve.Add(kvp.Value.ActualSystem.SOVAllianceTCU);
-                }
-
-                if (kvp.Value.ActualSystem.SOVAllianceIHUB != 0 && !AllianceIDToName.ContainsKey(kvp.Value.ActualSystem.SOVAllianceIHUB) && !IDToResolve.Contains(kvp.Value.ActualSystem.SOVAllianceIHUB))
-                {
-                    IDToResolve.Add(kvp.Value.ActualSystem.SOVAllianceIHUB);
-                }
-            }
-
-            _ = ResolveAllianceIDs(IDToResolve);
-        }
-
-        /// <summary>
-        /// Update the current Thera Connections from EVE-Scout
-        /// </summary>
-        public async void UpdateTheraConnections()
-        {
-            string theraApiURL = "https://api.eve-scout.com/v2/public/signatures?system_name=Thera";
-            string strContent = string.Empty;
-
-            try
-            {
-                HttpClient hc = new HttpClient();
-                var response = await hc.GetAsync(theraApiURL);
-                response.EnsureSuccessStatusCode();
-                strContent = await response.Content.ReadAsStringAsync();
-
-                JsonTextReader jsr = new JsonTextReader(new StringReader(strContent));
-
-                TheraConnections.Clear();
-
-                /*
-                    new format
-                    
-                    "id": "46",
-                    "created_at": "2023-12-02T11:24:49.000Z",
-                    "created_by_id": 93027866,
-                    "created_by_name": "Das d'Alembert",
-                    "updated_at": "2023-12-02T11:27:01.000Z",
-                    "updated_by_id": 93027866,
-                    "updated_by_name": "Das d'Alembert",
-                    "completed_at": "2023-12-02T11:27:01.000Z",
-                    "completed_by_id": 93027866,
-                    "completed_by_name": "Das d'Alembert",
-                    "completed": true,
-                    "wh_exits_outward": true,
-                    "wh_type": "Q063",
-                    "max_ship_size": "medium",
-                    "expires_at": "2023-12-03T04:24:49.000Z",
-                    "remaining_hours": 14,
-                    "signature_type": "wormhole",
-                    "out_system_id": 31000005,
-                    "out_system_name": "Thera",
-                    "out_signature": "HMM-222",
-                    "in_system_id": 30001715,
-                    "in_system_class": "hs",
-                    "in_system_name": "Moutid",
-                    "in_region_id": 10000020,
-                    "in_region_name": "Tash-Murkon",
-                    "in_signature": "LPI-677"
-                 */
-
-                while (jsr.Read())
-                {
-                    if (jsr.TokenType == JsonToken.StartObject)
-                    {
-                        JObject obj = JObject.Load(jsr);
-                        string inSignatureId = obj["in_signature"].ToString();
-                        string outSignatureId = obj["out_signature"].ToString();
-                        long solarSystemId = long.Parse(obj["in_system_id"].ToString());
-                        string wormHoleEOL = obj["expires_at"].ToString();
-                        string type = obj["signature_type"].ToString();
-
-                        if (type != null && type == "wormhole" && solarSystemId != 0 && wormHoleEOL != null && SystemIDToName.ContainsKey(solarSystemId))
-                        {
-                            System theraConnectionSystem = GetEveSystemFromID(solarSystemId);
-
-                            TheraConnection tc = new TheraConnection(theraConnectionSystem.Name, theraConnectionSystem.Region, inSignatureId, outSignatureId, wormHoleEOL);
-                            TheraConnections.Add(tc);
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                return;
-            }
-
-            if (TheraUpdateEvent != null)
-            {
-                TheraUpdateEvent();
-            }
-        }
-
-        public void UpdateMetaliminalStorms()
-        {
-            MetaliminalStorms.Clear();
-
-            List<Storm> ls = Storm.GetStorms();
-            foreach (Storm s in ls)
-            {
-                System sys = GetEveSystem(s.System);
-                if (sys != null)
-                {
-                    MetaliminalStorms.Add(s);
-                }
-            }
-
-            // now update the Strong and weak areas around the storm
-            foreach (Storm s in MetaliminalStorms)
-            {
-                // The Strong area is 1 jump out from the centre
-                List<string> strongArea = Navigation.GetSystemsXJumpsFrom(new List<string>(), s.System, 1);
-
-                // The weak area is 3 jumps out from the centre
-                List<string> weakArea = Navigation.GetSystemsXJumpsFrom(new List<string>(), s.System, 3);
-
-                // strip the strong area out of the weak so we dont have overlapping icons
-                s.WeakArea = weakArea.Except(strongArea).ToList();
-
-                // strip the centre out of the strong area
-                strongArea.Remove(s.Name);
-
-                s.StrongArea = strongArea;
-            }
-            if (StormsUpdateEvent != null)
-            {
-                StormsUpdateEvent();
-            }
-        }
-
-        public async void UpdateFactionWarfareInfo()
-        {
-            FactionWarfareSystems.Clear();
-
-            try
-            {
-                ESI.NET.EsiResponse<List<ESI.NET.Models.FactionWarfare.FactionWarfareSystem>> esr = await ESIClient.FactionWarfare.Systems();
-
-                string debugListofSytems = "";
-
-                if (ESIHelpers.ValidateESICall<List<ESI.NET.Models.FactionWarfare.FactionWarfareSystem>>(esr))
-                {
-                    foreach (ESI.NET.Models.FactionWarfare.FactionWarfareSystem i in esr.Data)
-                    {
-                        FactionWarfareSystemInfo fwsi = new FactionWarfareSystemInfo();
-                        fwsi.SystemState = FactionWarfareSystemInfo.State.None;
-
-                        fwsi.OccupierID = i.OccupierFactionId;
-                        fwsi.OccupierName = FactionWarfareSystemInfo.OwnerIDToName(i.OccupierFactionId);
-
-                        fwsi.OwnerID = i.OwnerFactionId;
-                        fwsi.OwnerName = FactionWarfareSystemInfo.OwnerIDToName(i.OwnerFactionId);
-
-                        fwsi.SystemID = i.SolarSystemId;
-                        fwsi.SystemName = GetEveSystemNameFromID(i.SolarSystemId);
-                        fwsi.LinkSystemID = 0;
-                        fwsi.VictoryPoints = i.VictoryPoints;
-                        fwsi.VictoryPointsThreshold = i.VictoryPointsThreshold;
-
-                        FactionWarfareSystems.Add(fwsi);
-
-                        debugListofSytems += fwsi.SystemName + "\n";
-                    }
-                }
-
-                // step 1, identify all the Frontline systems, these will be systems with connections to other systems with a different occupier
-                foreach (FactionWarfareSystemInfo fws in FactionWarfareSystems)
-                {
-                    System s = GetEveSystemFromID(fws.SystemID);
-                    foreach (string js in s.Jumps)
-                    {
-                        foreach (FactionWarfareSystemInfo fwss in FactionWarfareSystems)
-                        {
-                            if (fwss.SystemName == js && fwss.OccupierID != fws.OccupierID)
-                            {
-                                fwss.SystemState = FactionWarfareSystemInfo.State.Frontline;
-                                fws.SystemState = FactionWarfareSystemInfo.State.Frontline;
-                            }
-                        }
-                    }
-                }
-
-                // step 2, itendify all commandline operations by flooding out one from the frontlines
-                foreach (FactionWarfareSystemInfo fws in FactionWarfareSystems)
-                {
-                    if (fws.SystemState == FactionWarfareSystemInfo.State.Frontline)
-                    {
-                        System s = GetEveSystemFromID(fws.SystemID);
-
-                        foreach (string js in s.Jumps)
-                        {
-                            foreach (FactionWarfareSystemInfo fwss in FactionWarfareSystems)
-                            {
-                                if (fwss.SystemName == js && fwss.SystemState == FactionWarfareSystemInfo.State.None && fwss.OccupierID == fws.OccupierID)
-                                {
-                                    fwss.SystemState = FactionWarfareSystemInfo.State.CommandLineOperation;
-                                    fwss.LinkSystemID = fws.SystemID;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // step 3, itendify all Rearguard operations by flooding out one from the command lines
-                foreach (FactionWarfareSystemInfo fws in FactionWarfareSystems)
-                {
-                    if (fws.SystemState == FactionWarfareSystemInfo.State.CommandLineOperation)
-                    {
-                        System s = GetEveSystemFromID(fws.SystemID);
-
-                        foreach (string js in s.Jumps)
-                        {
-                            foreach (FactionWarfareSystemInfo fwss in FactionWarfareSystems)
-                            {
-                                if (fwss.SystemName == js && fwss.SystemState == FactionWarfareSystemInfo.State.None && fwss.OccupierID == fws.OccupierID)
-                                {
-                                    fwss.SystemState = FactionWarfareSystemInfo.State.Rearguard;
-                                    fwss.LinkSystemID = fws.SystemID;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // for ease remove all "none" systems
-                //FactionWarfareSystems.RemoveAll(sys => sys.SystemState == FactionWarfareSystemInfo.State.None);
-            }
-            catch { }
-        }
-
-        public void AddUpdateJumpBridge(string from, string to, long stationID)
-        {
-            // validate
-            if (GetEveSystem(from) == null || GetEveSystem(to) == null)
-            {
-                return;
-            }
-
-            bool found = false;
-
-            foreach (JumpBridge jb in JumpBridges)
-            {
-                if (jb.From == from)
-                {
-                    found = true;
-                    jb.FromID = stationID;
-                }
-                if (jb.To == from)
-                {
-                    found = true;
-                    jb.ToID = stationID;
-                }
-            }
-
-            if (!found)
-            {
-                JumpBridge njb = new JumpBridge(from, to);
-                njb.FromID = stationID;
-                JumpBridges.Add(njb);
-            }
         }
 
         /// <summary>
@@ -3480,42 +3432,106 @@ namespace SMT.EVEData
             UpdateFactionWarfareInfo();
         }
 
+
         /// <summary>
-        /// Start the download for the Server Info
+        /// Update the Alliance and Ticker data for all SOV owners in the specified region
         /// </summary>
-        private async void UpdateServerInfo()
+        public void UpdateIDsForMapRegion(string name)
         {
-            try
+            MapRegion r = GetRegion(name);
+            if (r == null)
             {
-                ESI.NET.EsiResponse<ESI.NET.Models.Status.Status> esr = await ESIClient.Status.Retrieve();
+                return;
+            }
 
-                if (ESIHelpers.ValidateESICall<ESI.NET.Models.Status.Status>(esr))
+            List<int> IDToResolve = new List<int>();
+
+            foreach (KeyValuePair<string, MapSystem> kvp in r.MapSystems)
+            {
+                if (kvp.Value.ActualSystem.SOVAllianceTCU != 0 && !AllianceIDToName.ContainsKey(kvp.Value.ActualSystem.SOVAllianceTCU) && !IDToResolve.Contains(kvp.Value.ActualSystem.SOVAllianceTCU))
                 {
-                    ServerInfo.Name = "Tranquility";
-                    ServerInfo.NumPlayers = esr.Data.Players;
-                    ServerInfo.ServerVersion = esr.Data.ServerVersion.ToString();
+                    IDToResolve.Add(kvp.Value.ActualSystem.SOVAllianceTCU);
                 }
-                else
+
+                if (kvp.Value.ActualSystem.SOVAllianceIHUB != 0 && !AllianceIDToName.ContainsKey(kvp.Value.ActualSystem.SOVAllianceIHUB) && !IDToResolve.Contains(kvp.Value.ActualSystem.SOVAllianceIHUB))
                 {
-                    ServerInfo.Name = "Tranquility";
-                    ServerInfo.NumPlayers = 0;
-                    ServerInfo.ServerVersion = "";
+                    IDToResolve.Add(kvp.Value.ActualSystem.SOVAllianceIHUB);
                 }
             }
-            catch { }
+
+            _ = ResolveAllianceIDs(IDToResolve);
         }
 
-        public void RemoveCharacter(LocalCharacter lc)
+        public void UpdateMetaliminalStorms()
         {
-            LocalCharacters.Remove(lc);
+            MetaliminalStorms.Clear();
 
-            if (LocalCharacterUpdateEvent != null)
+            List<Storm> ls = Storm.GetStorms();
+            foreach (Storm s in ls)
             {
-                LocalCharacterUpdateEvent();
+                System sys = GetEveSystem(s.System);
+                if (sys != null)
+                {
+                    MetaliminalStorms.Add(s);
+                }
+            }
+
+            // now update the Strong and weak areas around the storm
+            foreach (Storm s in MetaliminalStorms)
+            {
+                // The Strong area is 1 jump out from the centre
+                List<string> strongArea = Navigation.GetSystemsXJumpsFrom(new List<string>(), s.System, 1);
+
+                // The weak area is 3 jumps out from the centre
+                List<string> weakArea = Navigation.GetSystemsXJumpsFrom(new List<string>(), s.System, 3);
+
+                // strip the strong area out of the weak so we dont have overlapping icons
+                s.WeakArea = weakArea.Except(strongArea).ToList();
+
+                // strip the centre out of the strong area
+                strongArea.Remove(s.Name);
+
+                s.StrongArea = strongArea;
+            }
+            if (StormsUpdateEvent != null)
+            {
+                StormsUpdateEvent();
             }
         }
 
-        #endregion
+        public void AddUpdateJumpBridge(string from, string to, long stationID)
+        {
+            // validate
+            if (GetEveSystem(from) == null || GetEveSystem(to) == null)
+            {
+                return;
+            }
+
+            bool found = false;
+
+            foreach (JumpBridge jb in JumpBridges)
+            {
+                if (jb.From == from)
+                {
+                    found = true;
+                    jb.FromID = stationID;
+                }
+                if (jb.To == from)
+                {
+                    found = true;
+                    jb.ToID = stationID;
+                }
+            }
+
+            if (!found)
+            {
+                JumpBridge njb = new JumpBridge(from, to);
+                njb.FromID = stationID;
+                JumpBridges.Add(njb);
+            }
+        }
+
+        #endregion // Functions
 
         // ====================================================================================================
         #region BUSA Functions
