@@ -34,6 +34,7 @@
                                         <CheckBox IsChecked="{Binding Path=SyncActiveCharacterBasedOnActiveEVEClient}" Margin="0,3">Auto sync character to active window</CheckBox>
                                         <CheckBox x:Name="syncESIPositionChk" Margin="0,3" Checked="syncESIPositionChk_Checked" Unchecked="syncESIPositionChk_Checked">Use ESI for character positions</CheckBox>
                                         <CheckBox IsChecked="{Binding Path=DrawRoute}" Margin="0,3" Content="Draw Route" />
+                                        <CheckBox IsChecked="{Binding Path=DecloakResponse}" Margin="0,3" Content="Decloak quick response" />
                                         <CheckBox IsChecked="{Binding Path=AlwaysOpen}" Margin="0,3" Content="Force window focus on rat notifications" />
                                         <CheckBox IsChecked="{Binding MinimizeToTray}" Margin="0,3" Content="Minimize to tray" />
                                         <CheckBox IsChecked="{Binding CloseToTray}" Margin="0,3" Content="Close to tray">

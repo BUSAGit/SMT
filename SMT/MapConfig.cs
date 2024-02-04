@@ -19,7 +19,7 @@ namespace SMT
         private bool m_CloseToTray;
 
         private bool m_AlwaysOpen;
-
+        private bool m_DecloakResponse;
 
         private bool m_FlashWindow;
         private bool m_FlashWindowOnlyInDangerZone;
@@ -180,6 +180,19 @@ namespace SMT
             {
                 m_AlwaysOpen = value;
                 OnPropertyChanged("AlwaysOpen");
+            }
+        }
+
+        public bool DecloakResponse
+        {
+            get
+            {
+                return m_DecloakResponse;
+            }
+            set
+            {
+                m_DecloakResponse = value;
+                OnPropertyChanged("DecloakResponse");
             }
         }
 

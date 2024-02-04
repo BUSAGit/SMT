@@ -1267,6 +1267,11 @@ namespace SMT
                                     Uri woopUri = new Uri(AppDomain.CurrentDomain.BaseDirectory + @"\Sounds\woop.mp3");
                                     tb.AddAudio(woopUri);
                                     tb.Show();
+
+                                    if (MapConf.DecloakResponse)
+                                    {
+                                        EVEManager.OpenEveClientWindow(character);
+                                    }
                                 }
 
                                 catch
