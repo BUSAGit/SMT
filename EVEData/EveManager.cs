@@ -96,7 +96,6 @@ namespace SMT.EVEData
 
             smtWindowManager = new SMTWindowsManager();
 
-            smtWindowManager.FetchAllRunningEveClients();
         }
 
         /// <summary>
@@ -111,10 +110,16 @@ namespace SMT.EVEData
                 TimeSpan CharacterUpdateRate = TimeSpan.FromSeconds(1);
                 TimeSpan LowFreqUpdateRate = TimeSpan.FromMinutes(20);
                 TimeSpan SOVCampaignUpdateRate = TimeSpan.FromSeconds(30);
+                TimeSpan EveClientCheckFreqRate = TimeSpan.FromSeconds(30);
 
                 DateTime NextCharacterUpdate = DateTime.MinValue;
                 DateTime NextLowFreqUpdate = DateTime.MinValue;
                 DateTime NextSOVCampaignUpdate = DateTime.MinValue;
+                DateTime NextEveClientUpdate = DateTime.MinValue;
+
+
+                // ToDo : See if we can change this to PeriodicTimer.
+                //      If this runs too long or if we add to many check the size could pile up unintentionally.
 
                 // loop forever
                 while (BackgroundThreadShouldTerminate == false)
@@ -148,7 +153,12 @@ namespace SMT.EVEData
                         UpdateTheraConnections();
                     }
 
-                    //!! todo : add the background client fetcher here
+                    // Client Check
+                    if ((NextEveClientUpdate - DateTime.Now).Minutes < 0)
+                    {
+                        NextEveClientUpdate = DateTime.Now + EveClientCheckFreqRate;
+                        smtWindowManager.FetchAllRunningEveClients();
+                    }
 
                     Thread.Sleep(100);
                 }
@@ -3533,9 +3543,6 @@ namespace SMT.EVEData
                 return;
             }
         }
-
-
-
 
         #endregion
 

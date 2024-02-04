@@ -12,7 +12,7 @@ namespace EVEData.Utils.WindowsManager
     {
         // ==============================================================================================================
         // Variables
-        
+
         /// <summary>
         /// List of all possible eve proccess.
         /// </summary>
@@ -28,57 +28,7 @@ namespace EVEData.Utils.WindowsManager
         private readonly IDictionary<IntPtr, string> processCache;
 
         private PeriodicTimer timer;
-        /**
-         public enum HookType : int
-         {
-             WH_JOURNALRECORD = 0,
-             WH_JOURNALPLAYBACK = 1,
-             WH_KEYBOARD = 2,
-             WH_GETMESSAGE = 3,
-             WH_CALLWNDPROC = 4,
-             WH_CBT = 5,
-             WH_SYSMSGFILTER = 6,
-             WH_MOUSE = 7,
-             WH_HARDWARE = 8,
-             WH_DEBUG = 9,
-             WH_SHELL = 10,
-             WH_FOREGROUNDIDLE = 11,
-             WH_CALLWNDPROCRET = 12,
-             WH_KEYBOARD_LL = 13,
-             WH_MOUSE_LL = 14
-         }
 
-         public delegate int HookProc(int nCode, IntPtr wParam, IntPtr lParam);
-
-         //[DllImport("user32.dll")]
-         //private static extern int CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
-         const int HSHELL_WINDOWCREATED = 1;
-
-         //[DllImport("user32.dll", SetLastError = true)]
-         //private static extern IntPtr SetWindowsHookEx(HookType hook, HookProc callback, IntPtr hMod, uint dwThreadId);
-
-
-         [DllImport("User32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
-         public static extern int SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hInstance, int threadId);
-
-         [DllImport("User32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
-         public static extern int CallNextHookEx(int idHook, int nCode, IntPtr wParam, IntPtr lParam);
-
-
-         HookProc winDelegate;
-         static int hHook = 0;
-
-         private static int ShellHookProcDelegate(int code, IntPtr wParam, IntPtr lParam)
-         {
-             //App specific code here
-
-             return CallNextHookEx(0, code, wParam, lParam);
-
-         
-         }
-      //winDelegate = new HookProc(ShellHookProcDelegate);
-      //hHook = SetWindowsHookEx(10, winDelegate, IntPtr.Zero, 0);
-      */
         // ==============================================================================================================
         // Functions
 
@@ -86,11 +36,8 @@ namespace EVEData.Utils.WindowsManager
         {
             ListOfProcesses = new List<IProcessInfo>();
             EveExeStringName = "ExeFile";
-            SecondsToUpdate = 30;
-
-            // Create a Background thread to fetch clients every few seconds
-            RunTimerInBackground(TimeSpan.FromSeconds(SecondsToUpdate), () => FetchAllRunningEveClients());
         }
+
         async Task RunTimerInBackground(TimeSpan timeSpan, Action action)
         {
             timer = new PeriodicTimer(timeSpan);
@@ -158,6 +105,63 @@ namespace EVEData.Utils.WindowsManager
                 }
             }
         }
+
+        #region Prototype code
+
+        /**
+         Finding Windows Opening through WinHook
+        public enum HookType : int
+        {
+            WH_JOURNALRECORD = 0,
+            WH_JOURNALPLAYBACK = 1,
+            WH_KEYBOARD = 2,
+            WH_GETMESSAGE = 3,
+            WH_CALLWNDPROC = 4,
+            WH_CBT = 5,
+            WH_SYSMSGFILTER = 6,
+            WH_MOUSE = 7,
+            WH_HARDWARE = 8,
+            WH_DEBUG = 9,
+            WH_SHELL = 10,
+            WH_FOREGROUNDIDLE = 11,
+            WH_CALLWNDPROCRET = 12,
+            WH_KEYBOARD_LL = 13,
+            WH_MOUSE_LL = 14
+        }
+
+        public delegate int HookProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        //[DllImport("user32.dll")]
+        //private static extern int CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+        const int HSHELL_WINDOWCREATED = 1;
+
+        //[DllImport("user32.dll", SetLastError = true)]
+        //private static extern IntPtr SetWindowsHookEx(HookType hook, HookProc callback, IntPtr hMod, uint dwThreadId);
+
+
+        [DllImport("User32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
+        public static extern int SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hInstance, int threadId);
+
+        [DllImport("User32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
+        public static extern int CallNextHookEx(int idHook, int nCode, IntPtr wParam, IntPtr lParam);
+
+
+        HookProc winDelegate;
+        static int hHook = 0;
+
+        private static int ShellHookProcDelegate(int code, IntPtr wParam, IntPtr lParam)
+        {
+            //App specific code here
+
+            return CallNextHookEx(0, code, wParam, lParam);
+
+
+        }
+        //winDelegate = new HookProc(ShellHookProcDelegate);
+        //hHook = SetWindowsHookEx(10, winDelegate, IntPtr.Zero, 0);
+        */
+
+        #endregion
 
     }
 }
