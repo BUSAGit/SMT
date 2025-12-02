@@ -586,6 +586,7 @@ namespace SMT
                 MapConf.ToolBox_ShowShipJumps = RegionUC.ShowShipJumps;
                 MapConf.ToolBox_ShowShipKills = RegionUC.ShowShipKills;
                 MapConf.ToolBox_ShowSovOwner = RegionUC.ShowSovOwner;
+                MapConf.ToolBox_ShowStructureFuel = RegionUC.ShowStructureFuel;
                 MapConf.ToolBox_ShowStandings = RegionUC.ShowStandings;
                 MapConf.ToolBox_ShowSystemADM = RegionUC.ShowSystemADM;
                 MapConf.ToolBox_ShowSystemSecurity = RegionUC.ShowSystemSecurity;

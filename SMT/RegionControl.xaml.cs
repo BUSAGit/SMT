@@ -70,6 +70,7 @@ namespace SMT
         private bool m_ShowPodKills;
         private bool m_ShowShipJumps;
         private bool m_ShowShipKills;
+        private bool m_ShowStructureFuel;
         private bool m_ShowSovOwner;
         private bool m_ShowStandings;
         private bool m_ShowSystemADM;
@@ -306,6 +307,29 @@ namespace SMT
                 OnPropertyChanged("ShowShipKills");
             }
         }
+
+        public bool ShowStructureFuel
+        {
+            get
+            {
+                return m_ShowStructureFuel;
+            }
+
+            set
+            {
+                m_ShowStructureFuel = value;
+                if (m_ShowStructureFuel)
+                {
+                    ShowShipKills = false;
+                    ShowNPCKills = false;
+                    ShowPodKills = false;
+                    ShowShipJumps = false;
+                }
+
+                OnPropertyChanged("ShowStructureFuel");
+            }
+        }
+
 
         public bool ShowSovOwner
         {
@@ -676,6 +700,7 @@ namespace SMT
             ShowShipJumps = MapConf.ToolBox_ShowShipJumps;
             ShowShipKills = MapConf.ToolBox_ShowShipKills;
             ShowSovOwner = MapConf.ToolBox_ShowSovOwner;
+            ShowStructureFuel = MapConf.ToolBox_ShowStructureFuel;
             ShowStandings = MapConf.ToolBox_ShowStandings;
             ShowSystemADM = MapConf.ToolBox_ShowSystemADM;
             ShowSystemSecurity = MapConf.ToolBox_ShowSystemSecurity;
@@ -1250,6 +1275,7 @@ namespace SMT
 
             SolidColorBrush PositiveDeltaColor = new SolidColorBrush(Colors.Green);
             SolidColorBrush NegativeDeltaColor = new SolidColorBrush(Colors.Red);
+            SolidColorBrush YellowColor = new SolidColorBrush(Colors.Yellow);
 
             Brush JumpInRange = new SolidColorBrush(MapConf.ActiveColourScheme.JumpRangeInColour);
             Brush JumpInRangeMulti = new SolidColorBrush(Colors.Black);

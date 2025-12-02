@@ -249,6 +249,9 @@ namespace SMT
         public bool ToolBox_ShowSovOwner { get; set; }
 
         [Browsable(false)]
+        public bool ToolBox_ShowStructureFuel { get; set; }
+
+        [Browsable(false)]
         public bool ToolBox_ShowStandings { get; set; }
 
         [Browsable(false)]
