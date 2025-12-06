@@ -2,8 +2,6 @@
 // EVE App Config
 //-----------------------------------------------------------------------
 
-using System.IO;
-
 namespace SMT.EVEData
 {
     public class EveAppConfig
@@ -23,23 +21,22 @@ namespace SMT.EVEData
         /// <summary>
         /// SMT Version Tagline
         /// </summary>
-        public const string SMT_TITLE = "Cry Havok and let slip the hogs of war";
+        public const string SMT_TITLE = "Rock Whisperer";
 
         /// <summary>
         /// SMT Version
         /// </summary>
-        public const string SMT_VERSION = "SMT_130";
+        public const string SMT_VERSION = "SMT_143";
 
         /// <summary>
         /// Folder to store all of the data from
         /// </summary>
-        public static readonly string StorageRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SMT");
+        public static readonly string StorageRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SMT");
 
         /// <summary>
         /// Folder to store all of the data from
         /// </summary>
         public static readonly string VersionStorage = Path.Combine(StorageRoot, $"{SMT_VERSION}");
-
 
         #endregion Fields
     }

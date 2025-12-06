@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Net;
 using System.Numerics;
 using System.Windows;
 using System.Windows.Controls;
@@ -25,18 +24,39 @@ namespace SMT
         private const int SYSTEM_LINK_INDEX = 19;
         private const double SYSTEM_REGION_TEXT_WIDTH = 100;
         private const double SYSTEM_REGION_TEXT_X_OFFSET = -SYSTEM_REGION_TEXT_WIDTH / 2;
-        private const double SYSTEM_REGION_TEXT_Y_OFFSET = SYSTEM_TEXT_Y_OFFSET + SYSTEM_TEXT_TEXT_SIZE + 6;
+        private const double SYSTEM_REGION_TEXT_Y_OFFSET = SYSTEM_TEXT_Y_OFFSET + SYSTEM_TEXT_TEXT_SIZE + 3;
         private const double SYSTEM_SHAPE_OFFSET = SYSTEM_SHAPE_SIZE / 2;
         private const double SYSTEM_SHAPE_SIZE = 18;
         private const double SYSTEM_TEXT_TEXT_SIZE = 6;
-        private const double SYSTEM_SHAPE_OOR_SIZE = 10;
+        private const double SYSTEM_SHAPE_OOR_SIZE = 14;
         private const double SYSTEM_SHAPE_OOR_OFFSET = SYSTEM_SHAPE_OOR_SIZE / 2;
 
         private const int SYSTEM_TEXT_WIDTH = 100;
-        private const double SYSTEM_TEXT_X_OFFSET = -SYSTEM_TEXT_WIDTH / 2;
-        private const double SYSTEM_TEXT_Y_OFFSET = 8;
+        private const int SYSTEM_TEXT_HEIGHT = 50;
+        private const double SYSTEM_TEXT_X_OFFSET = SYSTEM_TEXT_WIDTH / 2;
+        private const double SYSTEM_TEXT_Y_OFFSET = SYSTEM_TEXT_HEIGHT / 2;
 
-        private const int SYSTEM_Z_INDEX = 22;
+        // depth order of data
+        private const int ZINDEX_CHARACTERS = 140;
+
+        private const int ZINDEX_POI = 113;
+        private const int ZINDEX_SOV_FIGHT_LOGO = 105;
+        private const int ZINDEX_CYNOBEACON = 105;
+        private const int ZINDEX_TEXT = 101;
+        private const int ZINDEX_SYSTEM = 100;
+        private const int ZINDEX_SYSTEM_OUTLINE = 99;
+        private const int ZINDEX_SOV_FIGHT_SHAPE = 97;
+        private const int ZINDEX_THERA = 97;
+        private const int ZINDEX_TURNER = 97;
+        private const int ZINDEX_STORM = 95;
+        private const int ZINDEX_TRIG = 97;
+        private const int ZINDEX_RANGEMARKER = 96;
+        private const int ZINDEX_SYSICON = 100;
+        private const int ZINDEX_ADM = 99;
+        private const int ZINDEX_POLY = 98;
+        private const int ZINDEX_JOVE = 105;
+
+        private const int THERA_Z_INDEX = 22;
 
         private readonly Brush SelectedAllianceBrush = new SolidColorBrush(Color.FromArgb(180, 200, 200, 200));
         private Dictionary<string, EVEData.EveManager.JumpShip> activeJumpSpheres;
@@ -46,6 +66,7 @@ namespace SMT
         // Store the Dynamic Map elements so they can seperately be cleared
         private List<System.Windows.UIElement> DynamicMapElements;
 
+        private List<System.Windows.UIElement> DynamicMapElementsSysLinkHighlight;
         private List<System.Windows.UIElement> DynamicMapElementsCharacters;
         private List<System.Windows.UIElement> DynamicMapElementsJBHighlight;
         private List<System.Windows.UIElement> DynamicMapElementsRangeMarkers;
@@ -85,8 +106,9 @@ namespace SMT
 
         // Constant Colours
         private Brush StandingVBadBrush = new SolidColorBrush(Color.FromArgb(110, 148, 5, 5));
-
         private Brush StandingVGoodBrush = new SolidColorBrush(Color.FromArgb(110, 5, 34, 120));
+
+
 
         private List<Point> SystemIcon_Astrahaus = new List<Point>
         {
@@ -128,6 +150,18 @@ namespace SMT
 
         // Timer to Re-draw the map
         private System.Windows.Threading.DispatcherTimer uiRefreshTimer;
+
+        // events
+
+        /// <summary>
+        /// Intel Updated Event Handler
+        /// </summary>
+        public delegate void SystemHover(string system);
+
+        /// <summary>
+        /// Intel Updated Event
+        /// </summary>
+        public event SystemHover SystemHoverEvent;
 
         /// <summary>
         /// Constructor
@@ -234,7 +268,7 @@ namespace SMT
             {
                 m_ShowNPCKills = value;
 
-                if (m_ShowNPCKills)
+                if(m_ShowNPCKills)
                 {
                     ShowPodKills = false;
                     ShowShipKills = false;
@@ -255,7 +289,7 @@ namespace SMT
             set
             {
                 m_ShowPodKills = value;
-                if (m_ShowPodKills)
+                if(m_ShowPodKills)
                 {
                     ShowNPCKills = false;
                     ShowShipKills = false;
@@ -276,7 +310,7 @@ namespace SMT
             set
             {
                 m_ShowShipJumps = value;
-                if (m_ShowShipJumps)
+                if(m_ShowShipJumps)
                 {
                     ShowNPCKills = false;
                     ShowPodKills = false;
@@ -297,7 +331,7 @@ namespace SMT
             set
             {
                 m_ShowShipKills = value;
-                if (m_ShowShipKills)
+                if(m_ShowShipKills)
                 {
                     ShowNPCKills = false;
                     ShowPodKills = false;
@@ -367,7 +401,7 @@ namespace SMT
             set
             {
                 m_ShowSystemADM = value;
-                if (m_ShowSystemADM)
+                if(m_ShowSystemADM)
                 {
                     ShowSystemSecurity = false;
                 }
@@ -384,7 +418,7 @@ namespace SMT
             set
             {
                 m_ShowSystemSecurity = value;
-                if (m_ShowSystemSecurity)
+                if(m_ShowSystemSecurity)
                 {
                     ShowSystemADM = false;
                 }
@@ -409,16 +443,16 @@ namespace SMT
 
         public void AddSovConflictsToMap()
         {
-            if (!ShowSystemTimers)
+            if(!ShowSystemTimers)
             {
                 return;
             }
 
             Brush ActiveSovFightBrush = new SolidColorBrush(Colors.DarkRed);
 
-            foreach (SOVCampaign sc in EM.ActiveSovCampaigns)
+            foreach(SOVCampaign sc in EM.ActiveSovCampaigns)
             {
-                if (Region.IsSystemOnMap(sc.System))
+                if(Region.IsSystemOnMap(sc.System))
                 {
                     MapSystem ms = Region.MapSystems[sc.System];
 
@@ -435,11 +469,11 @@ namespace SMT
 
                     Canvas.SetLeft(SovFightLogo, ms.Layout.X - SYSTEM_SHAPE_OFFSET + 5);
                     Canvas.SetTop(SovFightLogo, ms.Layout.Y - SYSTEM_SHAPE_OFFSET + 5);
-                    Canvas.SetZIndex(SovFightLogo, SYSTEM_Z_INDEX + 5);
+                    Canvas.SetZIndex(SovFightLogo, ZINDEX_SOV_FIGHT_LOGO);
                     MainCanvas.Children.Add(SovFightLogo);
                     DynamicMapElements.Add(SovFightLogo);
 
-                    if (sc.IsActive || sc.Type == "IHub")
+                    if(sc.IsActive || sc.Type == "IHub")
                     {
                         Shape activeSovFightShape = new Ellipse() { Height = SYSTEM_SHAPE_SIZE + 18, Width = SYSTEM_SHAPE_SIZE + 18 };
 
@@ -450,7 +484,7 @@ namespace SMT
 
                         Canvas.SetLeft(activeSovFightShape, ms.Layout.X - (SYSTEM_SHAPE_OFFSET + 9));
                         Canvas.SetTop(activeSovFightShape, ms.Layout.Y - (SYSTEM_SHAPE_OFFSET + 9));
-                        Canvas.SetZIndex(activeSovFightShape, SYSTEM_Z_INDEX - 3);
+                        Canvas.SetZIndex(activeSovFightShape, ZINDEX_SOV_FIGHT_SHAPE);
                         MainCanvas.Children.Add(activeSovFightShape);
                         DynamicMapElements.Add(activeSovFightShape);
                     }
@@ -458,18 +492,21 @@ namespace SMT
             }
         }
 
-        public void AddTheraSystemsToMap()
+        public void AddWHLinksSystemsToMap()
         {
-            Brush TheraBrush = new SolidColorBrush(MapConf.ActiveColourScheme.TheraEntranceSystem);
+            Brush TheraWHLinkBrush = new SolidColorBrush(MapConf.ActiveColourScheme.TheraEntranceSystem);
+            Brush TurnurWHLinkBrush = new SolidColorBrush(MapConf.ActiveColourScheme.ThurnurEntranceSystem);
 
-            foreach (TheraConnection tc in EM.TheraConnections)
+            List<TheraConnection> currentTheraConnections = EM.TheraConnections.ToList();
+
+            foreach(TheraConnection tc in currentTheraConnections)
             {
-                if (Region.IsSystemOnMap(tc.System))
+                if(Region.IsSystemOnMap(tc.System))
                 {
                     MapSystem ms = Region.MapSystems[tc.System];
 
                     Shape TheraShape;
-                    if (ms.ActualSystem.HasNPCStation)
+                    if(ms.ActualSystem.HasNPCStation)
                     {
                         TheraShape = new Rectangle() { Height = SYSTEM_SHAPE_SIZE + 6, Width = SYSTEM_SHAPE_SIZE + 6 };
                     }
@@ -478,15 +515,45 @@ namespace SMT
                         TheraShape = new Ellipse() { Height = SYSTEM_SHAPE_SIZE + 6, Width = SYSTEM_SHAPE_SIZE + 6 };
                     }
 
-                    TheraShape.Stroke = TheraBrush;
+                    TheraShape.Stroke = TheraWHLinkBrush;
                     TheraShape.StrokeThickness = 1.5;
                     TheraShape.StrokeLineJoin = PenLineJoin.Round;
-                    TheraShape.Fill = TheraBrush;
+                    TheraShape.Fill = TheraWHLinkBrush;
 
                     Canvas.SetLeft(TheraShape, ms.Layout.X - (SYSTEM_SHAPE_OFFSET + 3));
                     Canvas.SetTop(TheraShape, ms.Layout.Y - (SYSTEM_SHAPE_OFFSET + 3));
-                    Canvas.SetZIndex(TheraShape, SYSTEM_Z_INDEX - 3);
+                    Canvas.SetZIndex(TheraShape, ZINDEX_THERA);
                     MainCanvas.Children.Add(TheraShape);
+                }
+            }
+
+            List<TurnurConnection> currentTurnurConnections = EM.TurnurConnections.ToList();
+
+            foreach(TurnurConnection tc in currentTurnurConnections)
+            {
+                if(Region.IsSystemOnMap(tc.System))
+                {
+                    MapSystem ms = Region.MapSystems[tc.System];
+
+                    Shape TurnurShape;
+                    if(ms.ActualSystem.HasNPCStation)
+                    {
+                        TurnurShape = new Rectangle() { Height = SYSTEM_SHAPE_SIZE + 6, Width = SYSTEM_SHAPE_SIZE + 6 };
+                    }
+                    else
+                    {
+                        TurnurShape = new Ellipse() { Height = SYSTEM_SHAPE_SIZE + 6, Width = SYSTEM_SHAPE_SIZE + 6 };
+                    }
+
+                    TurnurShape.Stroke = TurnurWHLinkBrush;
+                    TurnurShape.StrokeThickness = 1.5;
+                    TurnurShape.StrokeLineJoin = PenLineJoin.Round;
+                    TurnurShape.Fill = TurnurWHLinkBrush;
+
+                    Canvas.SetLeft(TurnurShape, ms.Layout.X - (SYSTEM_SHAPE_OFFSET + 3));
+                    Canvas.SetTop(TurnurShape, ms.Layout.Y - (SYSTEM_SHAPE_OFFSET + 3));
+                    Canvas.SetZIndex(TurnurShape, ZINDEX_TURNER);
+                    MainCanvas.Children.Add(TurnurShape);
                 }
             }
         }
@@ -495,9 +562,9 @@ namespace SMT
         {
             Brush POIBrush = new SolidColorBrush(Colors.White);
 
-            foreach (POI p in EM.PointsOfInterest)
+            foreach(POI p in EM.PointsOfInterest)
             {
-                if (Region.IsSystemOnMap(p.System))
+                if(Region.IsSystemOnMap(p.System))
                 {
                     MapSystem ms = Region.MapSystems[p.System];
                     string POISymbol = "ℹ";
@@ -515,7 +582,7 @@ namespace SMT
 
                     Canvas.SetLeft(poiLbl, ms.Layout.X - (SYSTEM_SHAPE_OFFSET + 3));
                     Canvas.SetTop(poiLbl, ms.Layout.Y - (SYSTEM_SHAPE_OFFSET + 3));
-                    Canvas.SetZIndex(poiLbl, SYSTEM_Z_INDEX + 13);
+                    Canvas.SetZIndex(poiLbl, ZINDEX_POI);
                     MainCanvas.Children.Add(poiLbl);
                     DynamicMapElements.Add(poiLbl);
                 }
@@ -524,9 +591,9 @@ namespace SMT
 
         public void AddStormsToMap()
         {
-            foreach (Storm s in EM.MetaliminalStorms)
+            foreach(Storm s in EM.MetaliminalStorms)
             {
-                if (Region.IsSystemOnMap(s.System))
+                if(Region.IsSystemOnMap(s.System))
                 {
                     MapSystem ms = Region.MapSystems[s.System];
 
@@ -543,7 +610,7 @@ namespace SMT
                     stormCloud.UseLayoutRounding = true;
                     stormCloud.SnapsToDevicePixels = true;
 
-                    switch (s.Type)
+                    switch(s.Type)
                     {
                         case "Plasma":
                             {
@@ -572,14 +639,14 @@ namespace SMT
 
                     Canvas.SetLeft(stormCloud, ms.Layout.X - SYSTEM_SHAPE_OFFSET - 15);
                     Canvas.SetTop(stormCloud, ms.Layout.Y - SYSTEM_SHAPE_OFFSET - 11);
-                    Canvas.SetZIndex(stormCloud, SYSTEM_Z_INDEX + 5);
+                    Canvas.SetZIndex(stormCloud, ZINDEX_STORM);
                     MainCanvas.Children.Add(stormCloud);
                     DynamicMapElements.Add(stormCloud);
 
                     // now the strong area..
-                    foreach (string strongSys in s.StrongArea)
+                    foreach(string strongSys in s.StrongArea)
                     {
-                        if (Region.IsSystemOnMap(strongSys))
+                        if(Region.IsSystemOnMap(strongSys))
                         {
                             MapSystem mss = Region.MapSystems[strongSys];
 
@@ -596,16 +663,16 @@ namespace SMT
 
                             Canvas.SetLeft(strongStormCloud, mss.Layout.X - SYSTEM_SHAPE_OFFSET - 15);
                             Canvas.SetTop(strongStormCloud, mss.Layout.Y - SYSTEM_SHAPE_OFFSET - 11);
-                            Canvas.SetZIndex(strongStormCloud, SYSTEM_Z_INDEX + 5);
+                            Canvas.SetZIndex(strongStormCloud, ZINDEX_STORM);
                             MainCanvas.Children.Add(strongStormCloud);
                             DynamicMapElements.Add(strongStormCloud);
                         }
                     }
 
                     // now the wiki area..
-                    foreach (string weakSys in s.WeakArea)
+                    foreach(string weakSys in s.WeakArea)
                     {
-                        if (Region.IsSystemOnMap(weakSys))
+                        if(Region.IsSystemOnMap(weakSys))
                         {
                             MapSystem msw = Region.MapSystems[weakSys];
 
@@ -622,7 +689,7 @@ namespace SMT
 
                             Canvas.SetLeft(weakStormCloud, msw.Layout.X - SYSTEM_SHAPE_OFFSET - 10);
                             Canvas.SetTop(weakStormCloud, msw.Layout.Y - SYSTEM_SHAPE_OFFSET - 6);
-                            Canvas.SetZIndex(weakStormCloud, SYSTEM_Z_INDEX + 5);
+                            Canvas.SetZIndex(weakStormCloud, ZINDEX_STORM);
                             MainCanvas.Children.Add(weakStormCloud);
                             DynamicMapElements.Add(weakStormCloud);
                         }
@@ -633,7 +700,7 @@ namespace SMT
 
         public void AddTrigInvasionSytemsToMap()
         {
-            if (!MapConf.ShowTrigInvasions)
+            if(!MapConf.ShowTrigInvasions)
             {
                 return;
             }
@@ -647,10 +714,10 @@ namespace SMT
             ib.Stretch = Stretch.None;
             ib.ImageSource = trigLogoImage;
 
-            foreach (KeyValuePair<string, EVEData.MapSystem> kvp in Region.MapSystems)
+            foreach(KeyValuePair<string, EVEData.MapSystem> kvp in Region.MapSystems)
             {
                 EVEData.MapSystem ms = kvp.Value;
-                if (ms.ActualSystem.TrigInvasionStatus != EVEData.System.EdenComTrigStatus.None && !ms.OutOfRegion)
+                if(ms.ActualSystem.TrigInvasionStatus != EVEData.System.EdenComTrigStatus.None && !ms.OutOfRegion)
                 {
                     Polygon TrigShape;
                     TrigShape = new Polygon();
@@ -663,7 +730,7 @@ namespace SMT
                     TrigShape.StrokeLineJoin = PenLineJoin.Round;
                     TrigShape.Fill = trigBrush;
 
-                    Canvas.SetZIndex(TrigShape, SYSTEM_Z_INDEX - 3);
+                    Canvas.SetZIndex(TrigShape, ZINDEX_TRIG);
 
                     MainCanvas.Children.Add(TrigShape);
                     DynamicMapElements.Add(TrigShape);
@@ -689,6 +756,7 @@ namespace SMT
             DynamicMapElementsRouteHighlight = new List<UIElement>();
             DynamicMapElementsCharacters = new List<UIElement>();
             DynamicMapElementsJBHighlight = new List<UIElement>();
+            DynamicMapElementsSysLinkHighlight = new List<UIElement>();
 
             ActiveCharacter = null;
 
@@ -700,7 +768,6 @@ namespace SMT
             ShowShipJumps = MapConf.ToolBox_ShowShipJumps;
             ShowShipKills = MapConf.ToolBox_ShowShipKills;
             ShowSovOwner = MapConf.ToolBox_ShowSovOwner;
-            ShowStructureFuel = MapConf.ToolBox_ShowStructureFuel;
             ShowStandings = MapConf.ToolBox_ShowStandings;
             ShowSystemADM = MapConf.ToolBox_ShowSystemADM;
             ShowSystemSecurity = MapConf.ToolBox_ShowSystemSecurity;
@@ -728,16 +795,13 @@ namespace SMT
         /// <param name="FullRedraw">Clear all the static items or not</param>
         public void ReDrawMap(bool FullRedraw = false)
         {
-            if (ActiveCharacter != null && FollowCharacter == true)
+            if(ActiveCharacter != null && FollowCharacter == true)
             {
                 UpdateActiveCharacter();
             }
 
-            if (FullRedraw)
+            if(FullRedraw)
             {
-                // reset the background
-                //MainCanvasGrid.Background = new SolidColorBrush(MapConf.ActiveColourScheme.MapBackgroundColour);
-
                 Color c1 = MapConf.ActiveColourScheme.MapBackgroundColour;
                 Color c2 = MapConf.ActiveColourScheme.MapBackgroundColour;
                 c1.R = (byte)(0.9 * c1.R);
@@ -754,10 +818,6 @@ namespace SMT
                 lgb.GradientStops.Add(new GradientStop(c1, 1.0));
 
                 MainCanvasGrid.Background = lgb;
-
-                //                MainCanvas.Background = new SolidColorBrush(MapConf.ActiveColourScheme.MapBackgroundColour);
-                MainCanvasGrid.Background = lgb;
-                //MainZoomControl.Background = new SolidColorBrush(MapConf.ActiveColourScheme.MapBackgroundColour);
                 MainZoomControl.Background = lgb;
 
                 MainCanvas.Children.Clear();
@@ -768,37 +828,29 @@ namespace SMT
             else
             {
                 // remove anything temporary
-                foreach (UIElement uie in DynamicMapElements)
+                foreach(UIElement uie in DynamicMapElements)
                 {
                     MainCanvas.Children.Remove(uie);
                 }
                 DynamicMapElements.Clear();
 
-                foreach (UIElement uie in DynamicMapElementsRangeMarkers)
+                foreach(UIElement uie in DynamicMapElementsRangeMarkers)
                 {
                     MainCanvas.Children.Remove(uie);
                 }
                 DynamicMapElementsRangeMarkers.Clear();
 
-                foreach (UIElement uie in DynamicMapElementsRouteHighlight)
+                foreach(UIElement uie in DynamicMapElementsRouteHighlight)
                 {
                     MainCanvas.Children.Remove(uie);
                 }
                 DynamicMapElementsRouteHighlight.Clear();
 
-                foreach (UIElement uie in DynamicMapElementsCharacters)
+                foreach(UIElement uie in DynamicMapElementsCharacters)
                 {
                     MainCanvas.Children.Remove(uie);
                 }
                 DynamicMapElementsCharacters.Clear();
-
-                /*
-                                foreach (UIElement uie in DynamicMapElementsJBHighlight)
-                                {
-                                    MainCanvas.Children.Remove(uie);
-                                }
-                                DynamicMapElementsJBHighlight.Clear();
-                */
             }
 
             AddFWDataToMap();
@@ -808,12 +860,12 @@ namespace SMT
             AddSystemIntelOverlay();
             AddHighlightToSystem(SelectedSystem);
 
-            if (MapConf.DrawRoute)
+            if(MapConf.DrawRoute)
             {
                 AddRouteToMap();
             }
 
-            AddTheraSystemsToMap();
+            AddWHLinksSystemsToMap();
             AddStormsToMap();
             AddSovConflictsToMap();
             AddTrigInvasionSytemsToMap();
@@ -827,7 +879,7 @@ namespace SMT
         public void SelectRegion(string regionName)
         {
             // check we havent selected the same system
-            if (Region != null && Region.Name == regionName)
+            if(Region != null && Region.Name == regionName)
             {
                 return;
             }
@@ -844,7 +896,7 @@ namespace SMT
 
             // check its a valid system
             EVEData.MapRegion mr = EM.GetRegion(regionName);
-            if (mr == null)
+            if(mr == null)
             {
                 return;
             }
@@ -868,7 +920,8 @@ namespace SMT
                 ReDrawMap(true);
             }), DispatcherPriority.Normal);
 
-
+            // reset the zoom / export 
+            MainZoomControl.ZoomToFill();
 
             // select the item in the dropdown
             RegionSelectCB.SelectedItem = Region;
@@ -878,28 +931,28 @@ namespace SMT
 
         public void SelectSystem(string name, bool changeRegion = false)
         {
-            if (SelectedSystem == name)
+            if(SelectedSystem == name)
             {
                 return;
             }
 
             EVEData.System sys = EM.GetEveSystem(name);
 
-            if (sys == null)
+            if(sys == null)
             {
                 return;
             }
 
-            if (changeRegion && !Region.IsSystemOnMap(name))
+            if(changeRegion && !Region.IsSystemOnMap(name))
             {
                 SelectRegion(sys.Region);
             }
 
-            foreach (KeyValuePair<string, MapSystem> kvp in Region.MapSystems)
+            foreach(KeyValuePair<string, MapSystem> kvp in Region.MapSystems)
             {
-                if (kvp.Value.Name == name)
+                if(kvp.Value.Name == name)
                 {
-                    if (MainZoomControl.Mode == ZoomControl.ZoomControlModes.Custom && MapConf.FollowOnZoom)
+                    if(MainZoomControl.Mode == ZoomControl.ZoomControlModes.Custom && MapConf.FollowOnZoom)
                     {
                         MainZoomControl.Show(kvp.Value.Layout.X, kvp.Value.Layout.Y, MainZoomControl.Zoom);
                     }
@@ -920,17 +973,17 @@ namespace SMT
 
         public void UpdateActiveCharacter(EVEData.LocalCharacter c = null)
         {
-            if (ActiveCharacter != c && c != null)
+            if(ActiveCharacter != c && c != null)
             {
                 ActiveCharacter = c;
             }
 
-            if (ActiveCharacter != null && FollowCharacter)
+            if(ActiveCharacter != null && FollowCharacter)
             {
                 EVEData.System s = EM.GetEveSystem(ActiveCharacter.Location);
-                if (s != null)
+                if(s != null)
                 {
-                    if (s.Region != Region.Name)
+                    if(s.Region != Region.Name)
                     {
                         // change region
                         SelectRegion(s.Region);
@@ -947,7 +1000,7 @@ namespace SMT
         protected void OnPropertyChanged(string name)
         {
             PropertyChangedEventHandler handler = PropertyChanged;
-            if (handler != null)
+            if(handler != null)
             {
                 handler(this, new PropertyChangedEventArgs(name));
             }
@@ -956,7 +1009,7 @@ namespace SMT
         protected void OnRegionChanged(string name)
         {
             PropertyChangedEventHandler handler = RegionChanged;
-            if (handler != null)
+            if(handler != null)
             {
                 handler(this, new PropertyChangedEventArgs(name));
             }
@@ -968,7 +1021,7 @@ namespace SMT
         private void AddCharactersToMap()
         {
             // Cache all characters in the same system so we can render them on seperate lines
-            if (!MapConf.ShowCharacterNamesOnMap)
+            if(!MapConf.ShowCharacterNamesOnMap)
             {
                 return;
             }
@@ -979,32 +1032,32 @@ namespace SMT
             // 3 = warning
             NameTrackingLocationMap.Clear();
 
-            foreach (EVEData.LocalCharacter c in EM.LocalCharacters)
+            foreach(EVEData.LocalCharacter c in EM.LocalCharacters)
             {
                 // ignore characters out of this Map..
-                if (!Region.IsSystemOnMap(c.Location))
+                if(!Region.IsSystemOnMap(c.Location))
                 {
                     continue;
                 }
 
                 // skip offline characters if enabled..
-                if (!MapConf.ShowOfflineCharactersOnMap && !c.IsOnline)
+                if(!MapConf.ShowOfflineCharactersOnMap && !c.IsOnline)
                 {
                     continue;
                 }
 
-                if (!NameTrackingLocationMap.ContainsKey(c.Location))
+                if(!NameTrackingLocationMap.ContainsKey(c.Location))
                 {
                     NameTrackingLocationMap[c.Location] = new List<KeyValuePair<int, string>>();
                 }
 
                 int type = 0;
-                if (!c.IsOnline)
+                if(!c.IsOnline)
                 {
                     type = 2;
                 }
 
-                if (!string.IsNullOrEmpty(c.GameLogWarningText))
+                if(!string.IsNullOrEmpty(c.GameLogWarningText))
                 {
                     type = 1;
                 }
@@ -1012,41 +1065,41 @@ namespace SMT
                 NameTrackingLocationMap[c.Location].Add(new KeyValuePair<int, string>(type, c.Name));
             }
 
-            if (ActiveCharacter != null && MapConf.FleetShowOnMap)
+            if(ActiveCharacter != null && MapConf.FleetShowOnMap)
             {
-                foreach (Fleet.FleetMember fm in ActiveCharacter.FleetInfo.Members)
+                foreach(Fleet.FleetMember fm in ActiveCharacter.FleetInfo.Members)
                 {
-                    if (!Region.IsSystemOnMap(fm.Location))
+                    if(!Region.IsSystemOnMap(fm.Location))
                     {
                         continue;
                     }
 
                     // check its not one of our characters
                     bool addFleetMember = true;
-                    foreach (EVEData.LocalCharacter c in EM.LocalCharacters)
+                    foreach(EVEData.LocalCharacter c in EM.LocalCharacters)
                     {
-                        if (c.Name == fm.Name)
+                        if(c.Name == fm.Name)
                         {
                             addFleetMember = false;
                             break;
                         }
                     }
 
-                    if (addFleetMember)
+                    if(addFleetMember)
                     {
                         // ignore characters out of this Map..
-                        if (!Region.IsSystemOnMap(fm.Location))
+                        if(!Region.IsSystemOnMap(fm.Location))
                         {
                             continue;
                         }
 
-                        if (!NameTrackingLocationMap.ContainsKey(fm.Location))
+                        if(!NameTrackingLocationMap.ContainsKey(fm.Location))
                         {
                             NameTrackingLocationMap[fm.Location] = new List<KeyValuePair<int, string>>();
                         }
 
                         string displayName = fm.Name;
-                        if (MapConf.FleetShowShipType)
+                        if(MapConf.FleetShowShipType)
                         {
                             displayName += " (" + fm.ShipType + ")";
                         }
@@ -1055,7 +1108,7 @@ namespace SMT
                 }
             }
 
-            foreach (string lkvpk in NameTrackingLocationMap.Keys)
+            foreach(string lkvpk in NameTrackingLocationMap.Keys)
             {
                 List<KeyValuePair<int, string>> lkvp = NameTrackingLocationMap[lkvpk];
 
@@ -1065,15 +1118,15 @@ namespace SMT
 
                 bool addIndividualFleetMembers = true;
                 int fleetMemberCount = 0;
-                foreach (KeyValuePair<int, string> kvp in lkvp)
+                foreach(KeyValuePair<int, string> kvp in lkvp)
                 {
-                    if (kvp.Key == 3)
+                    if(kvp.Key == 3)
                     {
                         fleetMemberCount++;
                     }
                 }
 
-                if (fleetMemberCount > MapConf.FleetMaxMembersPerSystem)
+                if(fleetMemberCount > MapConf.FleetMaxMembersPerSystem)
                 {
                     addIndividualFleetMembers = false;
                 }
@@ -1086,7 +1139,7 @@ namespace SMT
                 SolidColorBrush localCharacterOfflineText = new SolidColorBrush(MapConf.ActiveColourScheme.CharacterOfflineTextColour);
                 SolidColorBrush characterTextOutline = new SolidColorBrush(Colors.Black);
 
-                if (MapConf.ShowCompactCharactersOnMap)
+                if(MapConf.ShowCompactCharactersOnMap)
                 {
                     OutlinedTextBlock charText = new OutlinedTextBlock();
                     charText.Text = lkvp.Count.ToString();
@@ -1097,20 +1150,20 @@ namespace SMT
 
                     Canvas.SetLeft(charText, ms.Layout.X + textXOffset);
                     Canvas.SetTop(charText, ms.Layout.Y + textYOffset);
-                    Canvas.SetZIndex(charText, 40);
+                    Canvas.SetZIndex(charText, ZINDEX_CHARACTERS);
                     MainCanvas.Children.Add(charText);
                     DynamicMapElements.Add(charText);
                 }
                 else
                 {
-                    foreach (KeyValuePair<int, string> kvp in lkvp)
+                    foreach(KeyValuePair<int, string> kvp in lkvp)
                     {
-                        if (kvp.Key == 1 && !MapConf.ShowOfflineCharactersOnMap)
+                        if(kvp.Key == 1 && !MapConf.ShowOfflineCharactersOnMap)
                         {
                             continue;
                         }
 
-                        if (kvp.Key == 0 || kvp.Key == 1 || kvp.Key == 2 || kvp.Key == 3 && addIndividualFleetMembers)
+                        if(kvp.Key == 0 || kvp.Key == 1 || kvp.Key == 2 || kvp.Key == 3 && addIndividualFleetMembers)
                         {
                             OutlinedTextBlock charText = new OutlinedTextBlock();
                             charText.Text = kvp.Value;
@@ -1119,7 +1172,7 @@ namespace SMT
                             charText.Fill = localCharacterText;
                             charText.StrokeThickness = 2;
 
-                            switch (kvp.Key)
+                            switch(kvp.Key)
                             {
                                 case 0:
                                     charText.Fill = localCharacterText;
@@ -1141,14 +1194,14 @@ namespace SMT
                                     break;
                             }
 
-                            if (MapConf.ActiveColourScheme.CharacterTextSize > 0)
+                            if(MapConf.ActiveColourScheme.CharacterTextSize > 0)
                             {
                                 charText.FontSize = MapConf.ActiveColourScheme.CharacterTextSize;
                             }
 
                             Canvas.SetLeft(charText, ms.Layout.X + textXOffset);
                             Canvas.SetTop(charText, ms.Layout.Y + textYOffset);
-                            Canvas.SetZIndex(charText, 40);
+                            Canvas.SetZIndex(charText, ZINDEX_CHARACTERS);
                             MainCanvas.Children.Add(charText);
                             DynamicMapElements.Add(charText);
 
@@ -1157,21 +1210,21 @@ namespace SMT
                     }
                 }
 
-                if (!addIndividualFleetMembers)
+                if(!addIndividualFleetMembers)
                 {
                     Label charText = new Label();
                     charText.Content = "Fleet (" + fleetMemberCount + ")";
                     charText.Foreground = fleetMemberText;
                     charText.IsHitTestVisible = false;
 
-                    if (MapConf.ActiveColourScheme.CharacterTextSize > 0)
+                    if(MapConf.ActiveColourScheme.CharacterTextSize > 0)
                     {
                         charText.FontSize = MapConf.ActiveColourScheme.CharacterTextSize;
                     }
 
                     Canvas.SetLeft(charText, ms.Layout.X + textXOffset);
                     Canvas.SetTop(charText, ms.Layout.Y + textYOffset);
-                    Canvas.SetZIndex(charText, 40);
+                    Canvas.SetZIndex(charText, ZINDEX_CHARACTERS);
                     MainCanvas.Children.Add(charText);
                     DynamicMapElements.Add(charText);
 
@@ -1201,7 +1254,7 @@ namespace SMT
 
                 Canvas.SetLeft(highlightSystemCircle, ms.Layout.X - circleOffset);
                 Canvas.SetTop(highlightSystemCircle, ms.Layout.Y - circleOffset);
-                Canvas.SetZIndex(highlightSystemCircle, 25);
+                Canvas.SetZIndex(highlightSystemCircle, ZINDEX_CHARACTERS - 1);
 
                 MainCanvas.Children.Add(highlightSystemCircle);
                 DynamicMapElements.Add(highlightSystemCircle);
@@ -1221,13 +1274,13 @@ namespace SMT
 
             List<string> WarningZoneHighlights = new List<string>();
 
-            foreach (EVEData.LocalCharacter c in EM.LocalCharacters)
+            foreach(EVEData.LocalCharacter c in EM.LocalCharacters)
             {
-                if (MapConf.ShowDangerZone && c.WarningSystems != null && c.DangerZoneActive)
+                if(MapConf.ShowDangerZone && c.WarningSystems != null && c.DangerZoneActive)
                 {
-                    foreach (string s in c.WarningSystems)
+                    foreach(string s in c.WarningSystems)
                     {
-                        if (!WarningZoneHighlights.Contains(s))
+                        if(!WarningZoneHighlights.Contains(s))
                         {
                             WarningZoneHighlights.Add(s);
                         }
@@ -1238,9 +1291,9 @@ namespace SMT
             double warningCircleSize = 40;
             double warningCircleSizeOffset = warningCircleSize / 2;
 
-            foreach (string s in WarningZoneHighlights)
+            foreach(string s in WarningZoneHighlights)
             {
-                if (Region.IsSystemOnMap(s))
+                if(Region.IsSystemOnMap(s))
                 {
                     EVEData.MapSystem mss = Region.MapSystems[s];
                     Shape WarninghighlightSystemCircle = new Ellipse() { Height = warningCircleSize, Width = warningCircleSize };
@@ -1289,13 +1342,13 @@ namespace SMT
             SolidColorBrush infoVulnerableSoon = new SolidColorBrush(MapConf.ActiveColourScheme.SOVStructureVulnerableSoonColour);
 
             BridgeInfoStackPanel.Children.Clear();
-            if (!string.IsNullOrEmpty(currentJumpCharacter))
+            if(!string.IsNullOrEmpty(currentJumpCharacter))
             {
                 EVEData.System js = EM.GetEveSystem(currentCharacterJumpSystem);
-                if (js != null)
+                if(js != null)
                 {
                     string text = "";
-                    if (MapConf.ShowCharacterNamesOnMap)
+                    if(MapConf.ShowCharacterNamesOnMap)
                     {
                         text = $"{jumpShipType} range from {currentJumpCharacter} : {currentCharacterJumpSystem} ({js.Region})";
                     }
@@ -1313,7 +1366,7 @@ namespace SMT
                     BridgeInfoStackPanel.Children.Add(l);
                 }
             }
-            foreach (string key in activeJumpSpheres.Keys)
+            foreach(string key in activeJumpSpheres.Keys)
             {
                 EVEData.System js = EM.GetEveSystem(key);
                 string text = $"{activeJumpSpheres[key]} range from {key} ({js.Region})";
@@ -1327,48 +1380,22 @@ namespace SMT
                 BridgeInfoStackPanel.Children.Add(l);
             }
 
-            foreach (EVEData.MapSystem sys in Region.MapSystems.Values.ToList())
+            foreach(EVEData.MapSystem sys in Region.MapSystems.Values.ToList())
             {
                 bool isSystemOOR = sys.OutOfRegion;
 
-                if (Region.MetaRegion)
+                if(Region.MetaRegion)
                 {
                     isSystemOOR = !sys.ActualSystem.FactionWarSystem;
                 }
 
-                if (MapConf.LimitESIDataToRegion && isSystemOOR)
+                if(MapConf.LimitESIDataToRegion && isSystemOOR)
                 {
                     continue;
                 }
 
                 infoColour = dataColor;
-                long SystemAlliance = 0;
-
-                if (MapConf.SOVBasedITCU)
-                {
-                    SystemAlliance = sys.ActualSystem.SOVAllianceTCU;
-                }
-                else
-                {
-                    SystemAlliance = sys.ActualSystem.SOVAllianceIHUB;
-                }
-
-                //
-                Coalition SystemCoalition = null;
-                if (SystemAlliance != 0)
-                {
-                    foreach (Coalition c in EM.Coalitions)
-                    {
-                        foreach (long l in c.MemberAlliances)
-                        {
-                            if (l == SystemAlliance)
-                            {
-                                SystemCoalition = c;
-                                break;
-                            }
-                        }
-                    }
-                }
+                long SystemAlliance = sys.ActualSystem.SOVAllianceID;
 
                 int nPCKillsLastHour = sys.ActualSystem.NPCKillsLastHour;
                 int podKillsLastHour = sys.ActualSystem.PodKillsLastHour;
@@ -1378,19 +1405,19 @@ namespace SMT
                 int infoValue = -1;
                 double infoSize = 0.0;
 
-                if (ShowNPCKills)
+                if(ShowNPCKills)
                 {
                     infoValue = nPCKillsLastHour;
                     infoSize = 0.15f * infoValue * ESIOverlayScale;
 
-                    if (MapConf.ShowRattingDataAsDelta)
+                    if(MapConf.ShowRattingDataAsDelta)
                     {
-                        if (MapConf.ShowNegativeRattingDelta)
+                        if(MapConf.ShowNegativeRattingDelta)
                         {
                             infoValue = Math.Abs(sys.ActualSystem.NPCKillsDeltaLastHour);
                             infoSize = 0.15f * infoValue * ESIOverlayScale;
 
-                            if (sys.ActualSystem.NPCKillsDeltaLastHour > 0)
+                            if(sys.ActualSystem.NPCKillsDeltaLastHour > 0)
                             {
                                 infoColour = PositiveDeltaColor;
                             }
@@ -1402,35 +1429,35 @@ namespace SMT
                     }
                 }
 
-                if (ShowPodKills)
+                if(ShowPodKills)
                 {
                     infoValue = podKillsLastHour;
                     infoSize = 20.0f * infoValue * ESIOverlayScale;
                 }
 
-                if (ShowShipKills)
+                if(ShowShipKills)
                 {
                     infoValue = shipKillsLastHour;
                     infoSize = 20.0f * infoValue * ESIOverlayScale;
                 }
 
-                if (ShowShipJumps)
+                if(ShowShipJumps)
                 {
                     infoValue = sys.ActualSystem.JumpsLastHour;
                     infoSize = infoValue * ESIOverlayScale;
                 }
 
-                if (ShowSystemTimers && MapConf.ShowIhubVunerabilities)
+                if(ShowSystemTimers && MapConf.ShowIhubVunerabilities)
                 {
                     DateTime now = DateTime.Now;
 
-                    if (now > sys.ActualSystem.IHubVunerabliltyStart && now < sys.ActualSystem.IHubVunerabliltyEnd)
+                    if(now > sys.ActualSystem.IHubVunerabliltyStart && now < sys.ActualSystem.IHubVunerabliltyEnd)
                     {
                         infoValue = (int)sys.ActualSystem.IHubOccupancyLevel;
                         infoSize = 30;
                         infoColour = infoVulnerable;
                     }
-                    else if (now.AddMinutes(30) > sys.ActualSystem.IHubVunerabliltyStart)
+                    else if(now.AddMinutes(30) > sys.ActualSystem.IHubVunerabliltyStart)
                     {
                         infoValue = (int)sys.ActualSystem.IHubOccupancyLevel;
                         infoSize = 27;
@@ -1442,37 +1469,15 @@ namespace SMT
                     }
                 }
 
-                if (ShowSystemTimers && MapConf.ShowTCUVunerabilities)
-                {
-                    DateTime now = DateTime.Now;
-
-                    if (now > sys.ActualSystem.TCUVunerabliltyStart && now < sys.ActualSystem.TCUVunerabliltyEnd)
-                    {
-                        infoValue = (int)sys.ActualSystem.TCUOccupancyLevel;
-                        infoSize = 30;
-                        infoColour = infoVulnerable;
-                    }
-                    else if (now.AddMinutes(MapConf.UpcomingSovMinutes) > sys.ActualSystem.TCUVunerabliltyStart)
-                    {
-                        infoValue = (int)sys.ActualSystem.TCUOccupancyLevel;
-                        infoSize = 27;
-                        infoColour = infoVulnerableSoon;
-                    }
-                    else
-                    {
-                        infoValue = -1;
-                    }
-                }
-
-                if (infoValue > 0)
+                if(infoValue > 0)
                 {
                     // clamp to a minimum
-                    if (infoSize < 24)
+                    if(infoSize < 24)
                         infoSize = 24;
 
-                    if (MapConf.ClampMaxESIOverlayValue)
+                    if(MapConf.ClampMaxESIOverlayValue)
                     {
-                        if (infoSize > MapConf.MaxESIOverlayValue)
+                        if(infoSize > MapConf.MaxESIOverlayValue)
                         {
                             infoSize = MapConf.MaxESIOverlayValue;
                         }
@@ -1488,14 +1493,14 @@ namespace SMT
                     DynamicMapElements.Add(infoCircle);
                 }
 
-                if (ShowNPCKills && MapConf.ShowRattingDataAsDelta && !MapConf.ShowNegativeRattingDelta && sys.ActualSystem.NPCKillsDeltaLastHour > 0)
+                if(ShowNPCKills && MapConf.ShowRattingDataAsDelta && !MapConf.ShowNegativeRattingDelta && sys.ActualSystem.NPCKillsDeltaLastHour > 0)
                 {
                     infoValue = Math.Abs(sys.ActualSystem.NPCKillsDeltaLastHour);
                     infoSize = 0.15f * infoValue * ESIOverlayScale;
 
-                    if (MapConf.ClampMaxESIOverlayValue)
+                    if(MapConf.ClampMaxESIOverlayValue)
                     {
-                        if (infoSize > MapConf.MaxESIOverlayValue * .8)
+                        if(infoSize > MapConf.MaxESIOverlayValue * .8)
                         {
                             infoSize = MapConf.MaxESIOverlayValue * .8;
                         }
@@ -1511,157 +1516,55 @@ namespace SMT
                     DynamicMapElements.Add(infoCircle);
                 }
 
-                if ((sys.ActualSystem.SOVAllianceTCU != 0 || sys.ActualSystem.SOVAllianceIHUB != 0) && ShowStandings)
+                if(sys.ActualSystem.SOVAllianceID != 0 && ShowStandings)
                 {
                     bool addToMap = true;
                     Brush br = null;
 
-                    if (ActiveCharacter != null && ActiveCharacter.ESILinked)
+                    if(ActiveCharacter != null && ActiveCharacter.ESILinked)
                     {
                         float Standing = 0.0f;
-                        float StandingTCU = 0.0f;
-                        float StandingIHUB = 0.0f;
 
-                        if (ActiveCharacter.AllianceID != 0 && ActiveCharacter.AllianceID == sys.ActualSystem.SOVAllianceTCU)
+                        if(ActiveCharacter.AllianceID != 0 && ActiveCharacter.AllianceID == sys.ActualSystem.SOVAllianceID)
                         {
-                            StandingTCU = 10.0f;
-                        }
-                        if (ActiveCharacter.AllianceID != 0 && ActiveCharacter.AllianceID == sys.ActualSystem.SOVAllianceIHUB)
-                        {
-                            StandingIHUB = 10.0f;
+                            Standing = 10.0f;
                         }
 
-                        if (sys.ActualSystem.SOVCorp != 0 && ActiveCharacter.Standings.Keys.Contains(sys.ActualSystem.SOVCorp))
+                        if(sys.ActualSystem.SOVCorp != 0 && ActiveCharacter.Standings.Keys.Contains(sys.ActualSystem.SOVCorp))
                         {
-                            StandingTCU = ActiveCharacter.Standings[sys.ActualSystem.SOVCorp];
-                            StandingIHUB = ActiveCharacter.Standings[sys.ActualSystem.SOVCorp];
+                            Standing = ActiveCharacter.Standings[sys.ActualSystem.SOVCorp];
                         }
 
-                        if (sys.ActualSystem.SOVAllianceTCU != 0 && ActiveCharacter.Standings.Keys.Contains(sys.ActualSystem.SOVAllianceTCU))
+                        if(sys.ActualSystem.SOVAllianceID != 0 && ActiveCharacter.Standings.Keys.Contains(sys.ActualSystem.SOVAllianceID))
                         {
-                            StandingTCU = ActiveCharacter.Standings[sys.ActualSystem.SOVAllianceTCU];
-                        }
-                        if (sys.ActualSystem.SOVAllianceIHUB != 0 && ActiveCharacter.Standings.Keys.Contains(sys.ActualSystem.SOVAllianceIHUB))
-                        {
-                            StandingIHUB = ActiveCharacter.Standings[sys.ActualSystem.SOVAllianceIHUB];
+                            Standing = ActiveCharacter.Standings[sys.ActualSystem.SOVAllianceID];
                         }
 
-                        if (MapConf.SOVBasedITCU)
-                        {
-                            Standing = StandingTCU;
-                        }
-                        else
-                        {
-                            Standing = StandingIHUB;
-                        }
-
-                        if (Standing == 0.0f)
+                        if(Standing == 0.0f)
                         {
                             addToMap = false;
                         }
 
                         br = StandingNeutBrush;
 
-                        if (Standing == -10.0)
+                        if(Standing == -10.0)
                         {
                             br = StandingVBadBrush;
                         }
 
-                        if (Standing == -5.0)
+                        if(Standing == -5.0)
                         {
                             br = StandingBadBrush;
                         }
 
-                        if (Standing == 5.0)
+                        if(Standing == 5.0)
                         {
                             br = StandingGoodBrush;
                         }
 
-                        if (Standing == 10.0)
+                        if(Standing == 10.0)
                         {
                             br = StandingVGoodBrush;
-                        }
-
-                        if (MapConf.SOVShowConflicts && sys.ActualSystem.SOVAllianceTCU != sys.ActualSystem.SOVAllianceIHUB)
-                        {
-                            addToMap = true;
-
-                            Brush b1 = Brushes.Transparent;
-                            Brush b2 = Brushes.Transparent;
-
-                            switch (StandingTCU)
-                            {
-                                case -10.0f:
-                                    b1 = StandingVBadBrush;
-                                    break;
-
-                                case -5.0f:
-                                    b1 = StandingBadBrush;
-                                    break;
-
-                                case 5.0f:
-                                    b1 = StandingGoodBrush;
-                                    break;
-
-                                case 10.0f:
-                                    b1 = StandingVGoodBrush;
-                                    break;
-                            }
-
-                            switch (StandingIHUB)
-                            {
-                                case -10.0f:
-                                    b2 = StandingVBadBrush;
-                                    break;
-
-                                case -5.0f:
-                                    b2 = StandingBadBrush;
-                                    break;
-
-                                case 5.0f:
-                                    b2 = StandingGoodBrush;
-                                    break;
-
-                                case 10.0f:
-                                    b2 = StandingVGoodBrush;
-                                    break;
-                            }
-
-                            if (StandingIHUB < 0 && StandingTCU > 0 || StandingIHUB > 0 && StandingTCU < 0)
-                            {
-                                LinearGradientBrush lgb = new LinearGradientBrush();
-                                lgb.StartPoint = new Point(0, 0);
-                                lgb.EndPoint = new Point(1, 1);
-                                lgb.GradientStops.Add(new GradientStop(Colors.Yellow, 0.0));
-                                lgb.GradientStops.Add(new GradientStop(Colors.Red, 1));
-
-                                br = lgb;
-                            }
-                            else
-                            {
-                                // Create a DrawingBrush
-                                DrawingBrush myBrush = new DrawingBrush();
-                                // Create a Geometry with white background
-                                GeometryDrawing backgroundSquare = new GeometryDrawing(b1, null, new RectangleGeometry(new Rect(0, 0, 8, 8)));
-                                // Create a GeometryGroup that will be added to Geometry
-                                GeometryGroup gGroup = new GeometryGroup();
-                                gGroup.Children.Add(new RectangleGeometry(new Rect(0, 0, 4, 4)));
-                                gGroup.Children.Add(new RectangleGeometry(new Rect(4, 4, 4, 4)));
-                                // Create a GeomertyDrawing
-                                GeometryDrawing checkers = new GeometryDrawing(b2, null, gGroup);
-                                DrawingGroup checkersDrawingGroup = new DrawingGroup();
-                                checkersDrawingGroup.Children.Add(backgroundSquare);
-                                checkersDrawingGroup.Children.Add(checkers);
-                                myBrush.Drawing = checkersDrawingGroup;
-                                // Set Viewport and TimeMode
-                                myBrush.Viewport = new Rect(0, 0, 8, 8);
-                                myBrush.Viewbox = new Rect(0, 0, 8, 8);
-                                myBrush.TileMode = TileMode.Tile;
-                                myBrush.ViewboxUnits = BrushMappingMode.Absolute;
-                                myBrush.ViewportUnits = BrushMappingMode.Absolute;
-
-                                br = myBrush;
-                            }
                         }
                     }
                     else
@@ -1670,7 +1573,7 @@ namespace SMT
                         addToMap = false;
                     }
 
-                    if (addToMap)
+                    if(addToMap)
                     {
                         Polygon poly = new Polygon();
                         poly.Fill = br;
@@ -1681,7 +1584,7 @@ namespace SMT
                         poly.StrokeLineJoin = PenLineJoin.Round;
                         poly.Stretch = Stretch.None;
 
-                        foreach (Vector2 p in sys.CellPoints)
+                        foreach(Vector2 p in sys.CellPoints)
                         {
                             System.Windows.Point wp = new Point(p.X, p.Y);
                             poly.Points.Add(wp);
@@ -1694,41 +1597,19 @@ namespace SMT
                     }
                 }
 
-                if (SystemAlliance != 0 && MapConf.ShowCoalition && SystemCoalition != null && ShowSovOwner)
-                {
-                    Polygon poly = new Polygon();
-                    poly.Fill = new SolidColorBrush(Color.FromArgb(SystemCoalition.CoalitionColor.A, SystemCoalition.CoalitionColor.R, SystemCoalition.CoalitionColor.G, SystemCoalition.CoalitionColor.B));
-                    poly.SnapsToDevicePixels = true;
-                    poly.Stroke = poly.Fill;
-                    poly.StrokeThickness = 0.4;
-                    poly.StrokeDashCap = PenLineCap.Round;
-                    poly.StrokeLineJoin = PenLineJoin.Round;
-
-                    foreach (Vector2 p in sys.CellPoints)
-                    {
-                        System.Windows.Point wp = new Point(p.X, p.Y);
-                        poly.Points.Add(wp);
-                    }
-
-                    MainCanvas.Children.Add(poly);
-
-                    // save the dynamic map elements
-                    DynamicMapElements.Add(poly);
-                }
-
-                if (activeJumpSpheres.Count > 0 || currentJumpCharacter != null)
+                if(activeJumpSpheres.Count > 0 || currentJumpCharacter != null)
                 {
                     bool AddHighlight = false;
                     bool DoubleHighlight = false;
 
                     // check character
-                    if (!string.IsNullOrEmpty(currentJumpCharacter))
+                    if(!string.IsNullOrEmpty(currentJumpCharacter))
                     {
                         decimal Distance = EM.GetRangeBetweenSystems(currentCharacterJumpSystem, sys.Name);
 
                         decimal Max = 0.1m;
 
-                        switch (jumpShipType)
+                        switch(jumpShipType)
                         {
                             case EVEData.EveManager.JumpShip.Super: { Max = 6.0m; } break;
                             case EVEData.EveManager.JumpShip.Titan: { Max = 6.0m; } break;
@@ -1740,15 +1621,15 @@ namespace SMT
                             case EVEData.EveManager.JumpShip.JF: { Max = 10.0m; } break;
                         }
 
-                        if (Distance < Max && Distance > 0.0m && sys.ActualSystem.TrueSec <= 0.45 && currentCharacterJumpSystem != sys.Name)
+                        if(Distance < Max && Distance > 0.0m && sys.ActualSystem.TrueSec <= 0.45 && currentCharacterJumpSystem != sys.Name)
                         {
                             AddHighlight = true;
                         }
                     }
 
-                    foreach (string key in activeJumpSpheres.Keys)
+                    foreach(string key in activeJumpSpheres.Keys)
                     {
-                        if (!string.IsNullOrEmpty(currentJumpCharacter) && key == currentCharacterJumpSystem)
+                        if(!string.IsNullOrEmpty(currentJumpCharacter) && key == currentCharacterJumpSystem)
                         {
                             continue;
                         }
@@ -1756,7 +1637,7 @@ namespace SMT
                         decimal Distance = EM.GetRangeBetweenSystems(key, sys.Name);
                         decimal Max = 0.1m;
 
-                        switch (activeJumpSpheres[key])
+                        switch(activeJumpSpheres[key])
                         {
                             case EVEData.EveManager.JumpShip.Super: { Max = 6.0m; } break;
                             case EVEData.EveManager.JumpShip.Titan: { Max = 6.0m; } break;
@@ -1768,9 +1649,9 @@ namespace SMT
                             case EVEData.EveManager.JumpShip.JF: { Max = 10.0m; } break;
                         }
 
-                        if (Distance < Max && Distance > 0.0m && sys.ActualSystem.TrueSec <= 0.45 && key != sys.Name)
+                        if(Distance < Max && Distance > 0.0m && sys.ActualSystem.TrueSec <= 0.45 && key != sys.Name)
                         {
-                            if (AddHighlight)
+                            if(AddHighlight)
                             {
                                 DoubleHighlight = true;
                             }
@@ -1778,22 +1659,22 @@ namespace SMT
                         }
                     }
 
-                    if (AddHighlight)
+                    if(AddHighlight)
                     {
                         Brush HighlightBrush = JumpInRange;
-                        if (DoubleHighlight)
+                        if(DoubleHighlight)
                         {
                             HighlightBrush = JumpInRangeMulti;
                         }
 
-                        if (MapConf.JumpRangeInAsOutline)
+                        if(MapConf.JumpRangeInAsOutline)
                         {
                             Shape InRangeMarker;
 
                             double ShapeSize = SYSTEM_SHAPE_SIZE + 10;
                             double halfShapeSize = ShapeSize / 2;
 
-                            if (sys.ActualSystem.HasNPCStation)
+                            if(sys.ActualSystem.HasNPCStation)
                             {
                                 InRangeMarker = new Rectangle() { Height = ShapeSize, Width = ShapeSize };
                             }
@@ -1809,7 +1690,7 @@ namespace SMT
 
                             Canvas.SetLeft(InRangeMarker, sys.Layout.X - halfShapeSize);
                             Canvas.SetTop(InRangeMarker, sys.Layout.Y - halfShapeSize);
-                            Canvas.SetZIndex(InRangeMarker, SYSTEM_Z_INDEX - 4);
+                            Canvas.SetZIndex(InRangeMarker, ZINDEX_RANGEMARKER);
 
                             MainCanvas.Children.Add(InRangeMarker);
                             DynamicMapElements.Add(InRangeMarker);
@@ -1818,7 +1699,7 @@ namespace SMT
                         {
                             Polygon poly = new Polygon();
 
-                            foreach (Vector2 p in sys.CellPoints)
+                            foreach(Vector2 p in sys.CellPoints)
                             {
                                 System.Windows.Point wp = new Point(p.X, p.Y);
                                 poly.Points.Add(wp);
@@ -1839,9 +1720,9 @@ namespace SMT
 
             Dictionary<string, int> ZKBBaseFeed = new Dictionary<string, int>();
             {
-                foreach (EVEData.ZKillRedisQ.ZKBDataSimple zs in EM.ZKillFeed.KillStream.ToList())
+                foreach(EVEData.ZKillRedisQ.ZKBDataSimple zs in EM.ZKillFeed.KillStream.ToList())
                 {
-                    if (ZKBBaseFeed.Keys.Contains(zs.SystemName))
+                    if(ZKBBaseFeed.Keys.Contains(zs.SystemName))
                     {
                         ZKBBaseFeed[zs.SystemName]++;
                     }
@@ -1851,11 +1732,11 @@ namespace SMT
                     }
                 }
 
-                foreach (KeyValuePair<string, EVEData.MapSystem> kvp in Region.MapSystems)
+                foreach(KeyValuePair<string, EVEData.MapSystem> kvp in Region.MapSystems)
                 {
                     EVEData.MapSystem sys = kvp.Value;
 
-                    if (ZKBBaseFeed.Keys.Contains(sys.ActualSystem.Name))
+                    if(ZKBBaseFeed.Keys.Contains(sys.ActualSystem.Name))
                     {
                         double ZKBValue = 24 + ((double)ZKBBaseFeed[sys.ActualSystem.Name] * ESIOverlayScale * 2);
 
@@ -1895,11 +1776,11 @@ namespace SMT
             //500003: "Amarr Empire";
             //500004: "Gallente Federation";
 
-            switch (state)
+            switch(state)
             {
                 case FactionWarfareSystemInfo.State.Frontline:
                     {
-                        switch (Owner)
+                        switch(Owner)
                         {
                             case 500001: return Caldari_FL;
                             case 500002: return Minmatar_FL;
@@ -1911,7 +1792,7 @@ namespace SMT
 
                 case FactionWarfareSystemInfo.State.CommandLineOperation:
                     {
-                        switch (Owner)
+                        switch(Owner)
                         {
                             case 500001: return Caldari_CLO;
                             case 500002: return Minmatar_CLO;
@@ -1923,7 +1804,7 @@ namespace SMT
 
                 case FactionWarfareSystemInfo.State.Rearguard:
                     {
-                        switch (Owner)
+                        switch(Owner)
                         {
                             case 500001: return Caldari_RG;
                             case 500002: return Minmatar_RG;
@@ -1939,7 +1820,7 @@ namespace SMT
 
         private void AddFWDataToMap()
         {
-            if (!Region.MetaRegion || !ShowSovOwner)
+            if(!Region.MetaRegion || !ShowSovOwner)
             {
                 return;
             }
@@ -1960,31 +1841,31 @@ namespace SMT
             da.RepeatBehavior = RepeatBehavior.Forever;
             Timeline.SetDesiredFrameRate(da, 20);
 
-            foreach (EVEData.MapSystem sys in Region.MapSystems.Values.ToList())
+            foreach(EVEData.MapSystem sys in Region.MapSystems.Values.ToList())
             {
                 FactionWarfareSystemInfo fsw = null;
-                foreach (FactionWarfareSystemInfo i in EveManager.Instance.FactionWarfareSystems)
+                foreach(FactionWarfareSystemInfo i in EveManager.Instance.FactionWarfareSystems)
                 {
-                    if (i.SystemID == sys.ActualSystem.ID)
+                    if(i.SystemID == sys.ActualSystem.ID)
                     {
                         fsw = i;
                         break;
                     }
                 }
 
-                if (fsw == null)
+                if(fsw == null)
                 {
                     continue;
                 }
 
-                if (fsw.SystemState == FactionWarfareSystemInfo.State.None)
+                if(fsw.SystemState == FactionWarfareSystemInfo.State.None)
                 {
                     continue;
                 }
 
                 Polygon poly = new Polygon();
 
-                foreach (Vector2 p in sys.CellPoints)
+                foreach(Vector2 p in sys.CellPoints)
                 {
                     System.Windows.Point wp = new Point(p.X, p.Y);
                     poly.Points.Add(wp);
@@ -1999,15 +1880,15 @@ namespace SMT
                 MainCanvas.Children.Add(poly);
                 DynamicMapElements.Add(poly);
 
-                if (fsw.SystemState == FactionWarfareSystemInfo.State.Rearguard)
+                if(fsw.SystemState == FactionWarfareSystemInfo.State.Rearguard)
                 {
-                    foreach (FactionWarfareSystemInfo i in EveManager.Instance.FactionWarfareSystems)
+                    foreach(FactionWarfareSystemInfo i in EveManager.Instance.FactionWarfareSystems)
                     {
-                        if (i.SystemID != fsw.SystemID && i.OccupierID == fsw.OccupierID && i.SystemState == FactionWarfareSystemInfo.State.CommandLineOperation && sys.ActualSystem.Jumps.Contains(i.SystemName))
+                        if(i.SystemID != fsw.SystemID && i.OccupierID == fsw.OccupierID && i.SystemState == FactionWarfareSystemInfo.State.CommandLineOperation && sys.ActualSystem.Jumps.Contains(i.SystemName))
                         {
-                            foreach (EVEData.MapSystem ms in Region.MapSystems.Values.ToList())
+                            foreach(EVEData.MapSystem ms in Region.MapSystems.Values.ToList())
                             {
-                                if (ms.Name == i.SystemName)
+                                if(ms.Name == i.SystemName)
                                 {
                                     Line l = new Line();
                                     l.X1 = sys.Layout.X;
@@ -2029,15 +1910,15 @@ namespace SMT
                     }
                 }
 
-                if (fsw.SystemState == FactionWarfareSystemInfo.State.CommandLineOperation)
+                if(fsw.SystemState == FactionWarfareSystemInfo.State.CommandLineOperation)
                 {
-                    foreach (FactionWarfareSystemInfo i in EveManager.Instance.FactionWarfareSystems)
+                    foreach(FactionWarfareSystemInfo i in EveManager.Instance.FactionWarfareSystems)
                     {
-                        if (i.SystemID != fsw.SystemID && i.OccupierID == fsw.OccupierID && i.SystemState == FactionWarfareSystemInfo.State.Frontline && sys.ActualSystem.Jumps.Contains(i.SystemName))
+                        if(i.SystemID != fsw.SystemID && i.OccupierID == fsw.OccupierID && i.SystemState == FactionWarfareSystemInfo.State.Frontline && sys.ActualSystem.Jumps.Contains(i.SystemName))
                         {
-                            foreach (EVEData.MapSystem ms in Region.MapSystems.Values.ToList())
+                            foreach(EVEData.MapSystem ms in Region.MapSystems.Values.ToList())
                             {
-                                if (ms.Name == i.SystemName)
+                                if(ms.Name == i.SystemName)
                                 {
                                     Line l = new Line();
                                     l.X1 = sys.Layout.X;
@@ -2059,15 +1940,15 @@ namespace SMT
                     }
                 }
 
-                if (fsw.SystemState == FactionWarfareSystemInfo.State.Frontline)
+                if(fsw.SystemState == FactionWarfareSystemInfo.State.Frontline)
                 {
-                    foreach (FactionWarfareSystemInfo i in EveManager.Instance.FactionWarfareSystems)
+                    foreach(FactionWarfareSystemInfo i in EveManager.Instance.FactionWarfareSystems)
                     {
-                        if (i.SystemID != fsw.SystemID && i.OccupierID != fsw.OccupierID && i.SystemState == FactionWarfareSystemInfo.State.Frontline && sys.ActualSystem.Jumps.Contains(i.SystemName))
+                        if(i.SystemID != fsw.SystemID && i.OccupierID != fsw.OccupierID && i.SystemState == FactionWarfareSystemInfo.State.Frontline && sys.ActualSystem.Jumps.Contains(i.SystemName))
                         {
-                            foreach (EVEData.MapSystem ms in Region.MapSystems.Values.ToList())
+                            foreach(EVEData.MapSystem ms in Region.MapSystems.Values.ToList())
                             {
-                                if (ms.Name == i.SystemName)
+                                if(ms.Name == i.SystemName)
                                 {
                                     Line l = new Line();
                                     l.X1 = sys.Layout.X;
@@ -2092,13 +1973,13 @@ namespace SMT
 
         private void AddHighlightToSystem(string name)
         {
-            if (!Region.MapSystems.Keys.Contains(name))
+            if(!Region.MapSystems.Keys.Contains(name))
             {
                 return;
             }
 
             EVEData.MapSystem selectedSys = Region.MapSystems[name];
-            if (selectedSys != null)
+            if(selectedSys != null)
             {
                 double circleSize = 32;
                 double circleOffset = circleSize / 2;
@@ -2146,14 +2027,14 @@ namespace SMT
 
         private void AddRouteToMap()
         {
-            if (ActiveCharacter == null)
+            if(ActiveCharacter == null)
                 return;
 
             Brush RouteBrush = new SolidColorBrush(Colors.Yellow);
             Brush RouteAnsiblexBrush = new SolidColorBrush(Colors.DarkGray);
 
             // no active route
-            if (ActiveCharacter.ActiveRoute.Count == 0)
+            if(ActiveCharacter.ActiveRoute.Count == 0)
             {
                 return;
             }
@@ -2163,12 +2044,12 @@ namespace SMT
 
             try
             {
-                for (int i = 1; i < ActiveCharacter.ActiveRoute.Count; i++)
+                for(int i = 1; i < ActiveCharacter.ActiveRoute.Count; i++)
                 {
                     Start = End;
                     End = ActiveCharacter.ActiveRoute[i].SystemName;
 
-                    if (!(Region.IsSystemOnMap(Start) && Region.IsSystemOnMap(End)))
+                    if(!(Region.IsSystemOnMap(Start) && Region.IsSystemOnMap(End)))
                     {
                         continue;
                     }
@@ -2186,7 +2067,7 @@ namespace SMT
 
                     routeLine.StrokeThickness = 5;
                     routeLine.Visibility = Visibility.Visible;
-                    if (ActiveCharacter.ActiveRoute[i - 1].GateToTake == Navigation.GateType.Ansiblex)
+                    if(ActiveCharacter.ActiveRoute[i - 1].GateToTake == Navigation.GateType.Ansiblex)
                     {
                         routeLine.Stroke = RouteAnsiblexBrush;
                     }
@@ -2212,7 +2093,7 @@ namespace SMT
 
                     routeLine.StrokeDashArray = dashes;
 
-                    if (!MapConf.DisableRoutePathAnimation)
+                    if(!MapConf.DisableRoutePathAnimation)
                     {
                         routeLine.BeginAnimation(Shape.StrokeDashOffsetProperty, da);
                     }
@@ -2233,19 +2114,18 @@ namespace SMT
             Brush intelBlobBrush = new SolidColorBrush(MapConf.ActiveColourScheme.IntelOverlayColour);
             Brush intelClearBlobBrush = new SolidColorBrush(MapConf.ActiveColourScheme.IntelClearOverlayColour);
 
-
             //The tolist creates a temporary copy; however this is updated on a second thread
-            foreach (EVEData.IntelData id in EM.IntelDataList.ToList())
+            foreach(EVEData.IntelData id in EM.IntelDataList.ToList())
             {
-                foreach (string sysStr in id.Systems)
+                foreach(string sysStr in id.Systems)
                 {
-                    if (Region.IsSystemOnMap(sysStr))
+                    if(Region.IsSystemOnMap(sysStr))
                     {
                         EVEData.MapSystem sys = Region.MapSystems[sysStr];
 
                         double radiusScale = (DateTime.Now - id.IntelTime).TotalSeconds / (double)MapConf.MaxIntelSeconds;
 
-                        if (radiusScale < 0.0 || radiusScale >= 1.0)
+                        if(radiusScale < 0.0 || radiusScale >= 1.0)
                         {
                             continue;
                         }
@@ -2255,7 +2135,7 @@ namespace SMT
                         double circleOffset = radius / 2;
 
                         Shape intelShape = new Ellipse() { Height = radius, Width = radius };
-                        if (id.ClearNotification)
+                        if(id.ClearNotification)
                         {
                             intelShape.Fill = intelClearBlobBrush;
                         }
@@ -2330,18 +2210,16 @@ namespace SMT
 
             Random rnd = new Random(4);
 
-            foreach (KeyValuePair<string, EVEData.MapSystem> kvp in Region.MapSystems)
+            foreach(KeyValuePair<string, EVEData.MapSystem> kvp in Region.MapSystems)
             {
                 EVEData.MapSystem mapSystem = kvp.Value;
 
-                Coalition SystemCoalition = null;
-
                 bool isSystemOOR = mapSystem.OutOfRegion;
 
-                if (Region.MetaRegion)
+                if(Region.MetaRegion)
                 {
                     var fws = EM.FactionWarfareSystems.FirstOrDefault(c => c.SystemName == mapSystem.Name);
-                    if (fws == null)
+                    if(fws == null)
                     {
                         isSystemOOR = true;
                     }
@@ -2352,13 +2230,13 @@ namespace SMT
                 }
 
                 double trueSecVal = mapSystem.ActualSystem.TrueSec;
-                if (MapConf.ShowSimpleSecurityView)
+                if(MapConf.ShowSimpleSecurityView)
                 {
-                    if (mapSystem.ActualSystem.TrueSec >= 0.45)
+                    if(mapSystem.ActualSystem.TrueSec >= 0.45)
                     {
                         trueSecVal = 1.0;
                     }
-                    else if (mapSystem.ActualSystem.TrueSec > 0.0)
+                    else if(mapSystem.ActualSystem.TrueSec > 0.0)
                     {
                         trueSecVal = 0.4;
                     }
@@ -2366,40 +2244,7 @@ namespace SMT
 
                 Brush securityColorFill = new SolidColorBrush(MapColours.GetSecStatusColour(trueSecVal, MapConf.ShowTrueSec));
 
-                if (MapConf.SOVBasedITCU)
-                {
-                    if (mapSystem.ActualSystem.SOVAllianceTCU != 0)
-                    {
-                        foreach (Coalition c in EM.Coalitions)
-                        {
-                            foreach (long l in c.MemberAlliances)
-                            {
-                                if (l == mapSystem.ActualSystem.SOVAllianceTCU)
-                                {
-                                    SystemCoalition = c;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    if (mapSystem.ActualSystem.SOVAllianceIHUB != 0)
-                    {
-                        foreach (Coalition c in EM.Coalitions)
-                        {
-                            foreach (long l in c.MemberAlliances)
-                            {
-                                if (l == mapSystem.ActualSystem.SOVAllianceIHUB)
-                                {
-                                    SystemCoalition = c;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
+
 
                 string SystemSubText = string.Empty;
 
@@ -2408,171 +2253,30 @@ namespace SMT
                 systemShape.StrokeThickness = 1.5;
 
                 bool needsOutline = true;
-                bool drawKeep = false;
-                bool drawFort = false;
-                bool drawAstra = false;
                 bool drawNPCStation = mapSystem.ActualSystem.HasNPCStation;
 
-                foreach (StructureHunter.Structures sh in mapSystem.ActualSystem.SHStructures)
+                if(drawNPCStation)
                 {
-                    switch (sh.TypeId)
-                    {
-                        case 35834: // Keepstar
-                            drawKeep = true;
-                            break;
-
-                        case 35833: // fortizar
-                        case 47512: // faction fortizar
-                        case 47513: // faction fortizar
-                        case 47514: // faction fortizar
-                        case 47515: // faction fortizar
-                        case 47516: // faction fortizar
-                        case 35827: // Sotiyo
-                            drawFort = true;
-                            break;
-
-                        default:
-                            drawAstra = true;
-                            break;
-                    }
-                }
-
-                if (ActiveCharacter != null && ActiveCharacter.ESILinked && ActiveCharacter.DockableStructures != null && ActiveCharacter.DockableStructures.Keys.Contains(mapSystem.Name))
-                {
-                    foreach (StructureIDs.StructureIdData sid in ActiveCharacter.DockableStructures[mapSystem.Name])
-                    {
-                        switch (sid.TypeId)
-                        {
-                            case 35834: // Keepstar
-                                drawKeep = true;
-                                break;
-
-                            case 35833: // fortizar
-                            case 47512: // faction fortizar
-                            case 47513: // faction fortizar
-                            case 47514: // faction fortizar
-                            case 47515: // faction fortizar
-                            case 47516: // faction fortizar
-                            case 35827: // Sotiyo
-                                drawFort = true;
-                                break;
-
-                            default:
-                                drawAstra = true;
-                                break;
-                        }
-                    }
-                }
-
-                if (drawKeep)
-                {
-                    drawFort = false;
-                    drawAstra = false;
-                    drawNPCStation = false;
-
-                    needsOutline = false;
-                }
-
-                if (drawFort)
-                {
-                    drawAstra = false;
-                    drawNPCStation = false;
-                }
-
-                if (drawNPCStation)
-                {
-                    drawAstra = false;
-                }
-
-                List<Point> shapePoints = null;
-
-                if (drawKeep)
-                {
-                    shapePoints = SystemIcon_Keepstar;
-                    systemShape.StrokeThickness = 1.5;
-                }
-
-                if (drawFort)
-                {
-                    shapePoints = SystemIcon_Fortizar;
-                    systemShape.StrokeThickness = 1;
-                }
-                if (drawAstra)
-                {
-                    shapePoints = SystemIcon_Astrahaus;
-                    systemShape.StrokeThickness = 1;
-                }
-
-                if (drawNPCStation)
-                {
-                    //                       shapePoints = SystemIcon_NPCStation;
-                    //                        systemShape.StrokeThickness = 1.5;
-                    //                        needsOutline = false;
                     needsOutline = true;
                 }
 
                 // override
-                if (ShowSystemADM)
+                if(ShowSystemADM)
                 {
-                    shapePoints = null;
                     needsOutline = true;
                 }
 
-                if (shapePoints != null)
-                {
-                    foreach (Point p in shapePoints)
-                    {
-                        systemShape.Points.Add(p);
-                    }
-
-                    systemShape.Stroke = SysOutlineBrush;
-                    systemShape.StrokeLineJoin = PenLineJoin.Round;
-
-                    if (mapSystem.OutOfRegion)
-                    {
-                        systemShape.Fill = SysOutRegionDarkBrush;
-                    }
-                    else
-                    {
-                        systemShape.Fill = SysInRegionDarkBrush;
-                    }
-
-                    // override with sec status colours
-                    if (ShowSystemSecurity)
-                    {
-                        systemShape.Fill = securityColorFill;
-                    }
-
-                    if (!needsOutline)
-                    {
-                        // add the hover over and click handlers
-                        systemShape.DataContext = mapSystem;
-                        systemShape.MouseDown += ShapeMouseDownHandler;
-                        systemShape.MouseEnter += ShapeMouseOverHandler;
-                        systemShape.MouseLeave += ShapeMouseOverHandler;
-                    }
-                    else
-                    {
-                        systemShape.IsHitTestVisible = false;
-                    }
-
-                    Canvas.SetLeft(systemShape, mapSystem.Layout.X - SYSTEM_SHAPE_OFFSET + 1);
-                    Canvas.SetTop(systemShape, mapSystem.Layout.Y - SYSTEM_SHAPE_OFFSET + 1);
-                    Canvas.SetZIndex(systemShape, SYSTEM_Z_INDEX);
-                    MainCanvas.Children.Add(systemShape);
-                }
-
-                if (mapSystem.ActualSystem.HasIceBelt || mapSystem.ActualSystem.HasBlueA0Star)
+                if(mapSystem.ActualSystem.HasIceBelt || mapSystem.ActualSystem.HasBlueA0Star)
                 {
                     string icons = "";
                     // ☀❄ // ⛭☼ ☀
 
-                    if (mapSystem.ActualSystem.HasBlueA0Star)
+                    if(mapSystem.ActualSystem.HasBlueA0Star)
                     {
                         icons += "⛭";
                     }
 
-                    if (mapSystem.ActualSystem.HasIceBelt)
+                    if(mapSystem.ActualSystem.HasIceBelt)
                     {
                         icons += "❄";
                     }
@@ -2587,23 +2291,23 @@ namespace SMT
 
                     Canvas.SetLeft(sysIcons, mapSystem.Layout.X - SYSTEM_SHAPE_OFFSET + 11);
                     Canvas.SetTop(sysIcons, mapSystem.Layout.Y - SYSTEM_SHAPE_OFFSET - 9);
-                    Canvas.SetZIndex(sysIcons, SYSTEM_Z_INDEX + 5);
+                    Canvas.SetZIndex(sysIcons, ZINDEX_SYSICON);
                     MainCanvas.Children.Add(sysIcons);
                 }
 
                 double shapeSize = SYSTEM_SHAPE_SIZE;
                 double shapeOffset = SYSTEM_SHAPE_OFFSET;
 
-                if (mapSystem.OutOfRegion)
+                if(mapSystem.OutOfRegion)
                 {
                     shapeSize = SYSTEM_SHAPE_OOR_SIZE;
                     shapeOffset = SYSTEM_SHAPE_OOR_OFFSET;
                 }
 
-                if (needsOutline)
+                if(needsOutline)
                 {
                     Shape SystemOutline;
-                    if (mapSystem.ActualSystem.HasNPCStation)
+                    if(mapSystem.ActualSystem.HasNPCStation)
                     {
                         SystemOutline = new Rectangle { Width = shapeSize, Height = shapeSize };
                     }
@@ -2616,7 +2320,7 @@ namespace SMT
                     SystemOutline.StrokeThickness = 1.5;
                     SystemOutline.StrokeLineJoin = PenLineJoin.Round;
 
-                    if (isSystemOOR)
+                    if(isSystemOOR)
                     {
                         SystemOutline.Fill = SysOutRegionBrush;
                     }
@@ -2626,19 +2330,19 @@ namespace SMT
                     }
 
                     // override with sec status colours
-                    if (ShowSystemSecurity)
+                    if(ShowSystemSecurity)
                     {
                         SystemOutline.Fill = securityColorFill;
                     }
 
-                    if (ShowSystemADM && mapSystem.ActualSystem.IHubOccupancyLevel != 0.0f)
+                    if(ShowSystemADM && mapSystem.ActualSystem.IHubOccupancyLevel != 0.0f)
                     {
                         float SovVal = mapSystem.ActualSystem.IHubOccupancyLevel;
 
                         float Blend = 1.0f - ((SovVal - 1.0f) / 5.0f);
                         byte r, g;
 
-                        if (Blend < 0.5)
+                        if(Blend < 0.5)
                         {
                             r = 255;
                             g = (byte)(255 * Blend / 0.5);
@@ -2659,15 +2363,15 @@ namespace SMT
 
                     Canvas.SetLeft(SystemOutline, mapSystem.Layout.X - shapeOffset);
                     Canvas.SetTop(SystemOutline, mapSystem.Layout.Y - shapeOffset);
-                    Canvas.SetZIndex(SystemOutline, SYSTEM_Z_INDEX - 1);
+                    Canvas.SetZIndex(SystemOutline, ZINDEX_SYSTEM_OUTLINE);
                     MainCanvas.Children.Add(SystemOutline);
                 }
 
-                if (ShowSystemADM && mapSystem.ActualSystem.IHubOccupancyLevel != 0.0 && !ShowSystemTimers && !mapSystem.OutOfRegion)
+                if(ShowSystemADM && mapSystem.ActualSystem.IHubOccupancyLevel != 0.0 && !ShowSystemTimers && !mapSystem.OutOfRegion)
                 {
                     Label sovADM = new Label();
                     sovADM.Content = "1.0";
-                    sovADM.FontSize = 8;
+                    sovADM.FontSize = 7;
                     sovADM.IsHitTestVisible = false;
                     sovADM.Content = $"{mapSystem.ActualSystem.IHubOccupancyLevel:f1}";
                     sovADM.HorizontalContentAlignment = HorizontalAlignment.Center;
@@ -2675,26 +2379,38 @@ namespace SMT
                     sovADM.Width = shapeSize + 2;
                     sovADM.Height = shapeSize + 2;
                     sovADM.Foreground = DarkTextColourBrush;
+                    sovADM.FontWeight = FontWeights.Bold;
 
                     Canvas.SetLeft(sovADM, mapSystem.Layout.X - (shapeOffset + 1));
                     Canvas.SetTop(sovADM, mapSystem.Layout.Y - (shapeOffset + 1));
-                    Canvas.SetZIndex(sovADM, SYSTEM_Z_INDEX - 1);
+                    Canvas.SetZIndex(sovADM, ZINDEX_ADM);
                     MainCanvas.Children.Add(sovADM);
                 }
+
+                Grid sysTextGrid = new Grid
+                {
+                    Width = SYSTEM_TEXT_WIDTH,
+                    Height = SYSTEM_TEXT_HEIGHT,
+                };
+
+                StackPanel sp = new StackPanel
+                {
+                    Orientation = Orientation.Vertical,
+                };
 
                 Label sysText = new Label();
                 sysText.Content = mapSystem.Name;
 
-                if (MapConf.ActiveColourScheme.SystemTextSize > 0)
+
+                if(MapConf.ActiveColourScheme.SystemTextSize > 0)
                 {
                     sysText.FontSize = MapConf.ActiveColourScheme.SystemTextSize;
                 }
 
                 sysText.Foreground = SysInRegionTextBrush;
-
                 double sysTextOffset = SYSTEM_TEXT_Y_OFFSET;
 
-                if (mapSystem.OutOfRegion)
+                if(mapSystem.OutOfRegion)
                 {
                     sysText.Foreground = SysOutRegionTextBrush;
                     sysText.FontSize -= 2;
@@ -2706,34 +2422,98 @@ namespace SMT
                 sysText.Padding = border;
                 sysText.Margin = border;
                 sysText.IsHitTestVisible = false;
-                sysText.HorizontalContentAlignment = HorizontalAlignment.Center;
-                sysText.VerticalContentAlignment = VerticalAlignment.Center;
-                sysText.Width = SYSTEM_TEXT_WIDTH;
 
-                Canvas.SetLeft(sysText, mapSystem.Layout.X + SYSTEM_TEXT_X_OFFSET);
-                Canvas.SetTop(sysText, mapSystem.Layout.Y + sysTextOffset);
-                Canvas.SetZIndex(sysText, SYSTEM_Z_INDEX);
+                sp.Children.Add(sysText);
 
-                MainCanvas.Children.Add(sysText);
+                switch(mapSystem.TextPos)
+                {
+                    case MapSystem.TextPosition.Top:
+                        {
+                            double spLeft = mapSystem.Layout.X - (SYSTEM_TEXT_X_OFFSET);
+                            double spTop = mapSystem.Layout.Y - (SYSTEM_SHAPE_OFFSET + SYSTEM_TEXT_HEIGHT + 1);
+                            Canvas.SetLeft(sysTextGrid, spLeft);
+                            Canvas.SetTop(sysTextGrid, spTop);
+
+                            sysText.HorizontalContentAlignment = HorizontalAlignment.Center;
+                            sysText.VerticalContentAlignment = VerticalAlignment.Center;
+                            sp.VerticalAlignment = VerticalAlignment.Bottom;
+                            sp.HorizontalAlignment = HorizontalAlignment.Center;
+
+                            sysTextGrid.Children.Add(sp);
+                        }
+                        break;
+
+                    case MapSystem.TextPosition.Bottom:
+                        {
+                            double spLeft = mapSystem.Layout.X - (SYSTEM_TEXT_X_OFFSET);
+                            double spTop = mapSystem.Layout.Y + (SYSTEM_SHAPE_OFFSET) - 1;
+                            Canvas.SetLeft(sysTextGrid, spLeft);
+                            Canvas.SetTop(sysTextGrid, spTop);
+
+                            sysText.HorizontalContentAlignment = HorizontalAlignment.Center;
+                            sysText.VerticalContentAlignment = VerticalAlignment.Center;
+
+                            sp.VerticalAlignment = VerticalAlignment.Top;
+                            sp.HorizontalAlignment = HorizontalAlignment.Center;
+
+                            sysTextGrid.Children.Add(sp);
+                        }
+                        break;
+
+                    case MapSystem.TextPosition.Left:
+                        {
+                            double spLeft = mapSystem.Layout.X - (SYSTEM_SHAPE_OFFSET + SYSTEM_TEXT_WIDTH + 3);
+                            double spTop = mapSystem.Layout.Y - (SYSTEM_TEXT_Y_OFFSET);
+                            Canvas.SetLeft(sysTextGrid, spLeft);
+                            Canvas.SetTop(sysTextGrid, spTop);
+
+                            sysText.HorizontalContentAlignment = HorizontalAlignment.Right;
+                            sysText.VerticalContentAlignment = VerticalAlignment.Center;
+                            sp.VerticalAlignment = VerticalAlignment.Center;
+                            sp.HorizontalAlignment = HorizontalAlignment.Right;
+                            sysTextGrid.Children.Add(sp);
+                        }
+                        break;
+
+                    case MapSystem.TextPosition.Right:
+                        {
+                            double spLeft = mapSystem.Layout.X + SYSTEM_SHAPE_OFFSET + 3;
+                            double spTop = mapSystem.Layout.Y - SYSTEM_TEXT_Y_OFFSET;
+                            Canvas.SetLeft(sysTextGrid, spLeft);
+                            Canvas.SetTop(sysTextGrid, spTop);
+                            sp.VerticalAlignment = VerticalAlignment.Center;
+                            sp.HorizontalAlignment = HorizontalAlignment.Left;
+
+                            sysText.HorizontalContentAlignment = HorizontalAlignment.Left;
+                            sysText.VerticalContentAlignment = VerticalAlignment.Center;
+                            sysTextGrid.Children.Add(sp);
+                        }
+                        break;
+                }
+
+                Canvas.SetZIndex(sysTextGrid, ZINDEX_SYSTEM);
+                Canvas.SetZIndex(sysText, ZINDEX_SYSTEM);
+
+                MainCanvas.Children.Add(sysTextGrid);
 
                 // generate the list of links
-                foreach (string jumpTo in mapSystem.ActualSystem.Jumps)
+                foreach(string jumpTo in mapSystem.ActualSystem.Jumps)
                 {
-                    if (Region.IsSystemOnMap(jumpTo))
+                    if(Region.IsSystemOnMap(jumpTo))
                     {
                         EVEData.MapSystem to = Region.MapSystems[jumpTo];
 
                         bool NeedsAdd = true;
-                        foreach (GateHelper gh in systemLinks)
+                        foreach(GateHelper gh in systemLinks)
                         {
-                            if (((gh.from == mapSystem) || (gh.to == mapSystem)) && ((gh.from == to) || (gh.to == to)))
+                            if(((gh.from == mapSystem) || (gh.to == mapSystem)) && ((gh.from == to) || (gh.to == to)))
                             {
                                 NeedsAdd = false;
                                 break;
                             }
                         }
 
-                        if (NeedsAdd)
+                        if(NeedsAdd)
                         {
                             GateHelper g = new GateHelper();
                             g.from = mapSystem;
@@ -2745,12 +2525,12 @@ namespace SMT
 
                 double regionMarkerOffset = SYSTEM_REGION_TEXT_Y_OFFSET;
 
-                if (MapConf.ShowActiveIncursions && mapSystem.ActualSystem.ActiveIncursion)
+                if(MapConf.ShowActiveIncursions && mapSystem.ActualSystem.ActiveIncursion)
                 {
                     {
                         Polygon poly = new Polygon();
 
-                        foreach (Vector2 p in mapSystem.CellPoints)
+                        foreach(Vector2 p in mapSystem.CellPoints)
                         {
                             System.Windows.Point wp = new Point(p.X, p.Y);
                             poly.Points.Add(wp);
@@ -2767,7 +2547,7 @@ namespace SMT
                     }
                 }
 
-                if (MapConf.ShowCynoBeacons && mapSystem.ActualSystem.HasJumpBeacon)
+                if(MapConf.ShowCynoBeacons && mapSystem.ActualSystem.HasJumpBeacon)
                 {
                     Shape CynoBeaconLogo = new Ellipse { Width = 8, Height = 8 };
                     CynoBeaconLogo.Stroke = SysOutlineBrush;
@@ -2777,11 +2557,11 @@ namespace SMT
 
                     Canvas.SetLeft(CynoBeaconLogo, mapSystem.Layout.X + 7);
                     Canvas.SetTop(CynoBeaconLogo, mapSystem.Layout.Y - 12);
-                    Canvas.SetZIndex(CynoBeaconLogo, SYSTEM_Z_INDEX + 5);
+                    Canvas.SetZIndex(CynoBeaconLogo, ZINDEX_CYNOBEACON);
                     MainCanvas.Children.Add(CynoBeaconLogo);
                 }
 
-                if (MapConf.ShowJoveObservatories && mapSystem.ActualSystem.HasJoveObservatory && !ShowSystemADM && !ShowSystemTimers)
+                if(MapConf.ShowJoveObservatories && mapSystem.ActualSystem.HasJoveObservatory && !ShowSystemADM && !ShowSystemTimers)
                 {
                     Image JoveLogo = new Image
                     {
@@ -2797,18 +2577,18 @@ namespace SMT
 
                     Canvas.SetLeft(JoveLogo, mapSystem.Layout.X - (JoveLogo.Width / 2));
                     Canvas.SetTop(JoveLogo, mapSystem.Layout.Y - (JoveLogo.Height / 2));
-                    Canvas.SetZIndex(JoveLogo, SYSTEM_Z_INDEX + 5);
+                    Canvas.SetZIndex(JoveLogo, ZINDEX_JOVE);
                     MainCanvas.Children.Add(JoveLogo);
                 }
 
                 EVEData.System es = EM.GetEveSystem(SelectedSystem);
 
-                if (es != null && (ShowSystemTimers && (MapConf.ShowIhubVunerabilities || MapConf.ShowTCUVunerabilities)) && mapSystem.ActualSystem.ConstellationID == es.ConstellationID)
+                if(es != null && ShowSystemTimers && MapConf.ShowIhubVunerabilities && mapSystem.ActualSystem.ConstellationID == es.ConstellationID)
                 {
                     {
                         Polygon poly = new Polygon();
 
-                        foreach (Vector2 p in mapSystem.CellPoints)
+                        foreach(Vector2 p in mapSystem.CellPoints)
                         {
                             System.Windows.Point wp = new Point(p.X, p.Y);
                             poly.Points.Add(wp);
@@ -2825,22 +2605,13 @@ namespace SMT
                     }
                 }
 
-                int SystemAlliance = 0;
+                int SystemAlliance = mapSystem.ActualSystem.SOVAllianceID;
 
-                if (MapConf.SOVBasedITCU)
-                {
-                    SystemAlliance = mapSystem.ActualSystem.SOVAllianceTCU;
-                }
-                else
-                {
-                    SystemAlliance = mapSystem.ActualSystem.SOVAllianceIHUB;
-                }
-
-                if (ShowSovOwner && SelectedAlliance != 0 && SystemAlliance == SelectedAlliance)
+                if(ShowSovOwner && SelectedAlliance != 0 && SystemAlliance == SelectedAlliance)
                 {
                     Polygon poly = new Polygon();
 
-                    foreach (Vector2 p in mapSystem.CellPoints)
+                    foreach(Vector2 p in mapSystem.CellPoints)
                     {
                         System.Windows.Point wp = new Point(p.X, p.Y);
                         poly.Points.Add(wp);
@@ -2852,20 +2623,20 @@ namespace SMT
                     poly.StrokeThickness = 1;
                     poly.StrokeDashCap = PenLineCap.Round;
                     poly.StrokeLineJoin = PenLineJoin.Round;
-                    Canvas.SetZIndex(poly, SYSTEM_Z_INDEX - 2);
+                    Canvas.SetZIndex(poly, ZINDEX_POLY);
                     MainCanvas.Children.Add(poly);
                 }
 
-                if (isSystemOOR)
+                if(isSystemOOR)
                 {
-                    if (SystemSubText != string.Empty)
+                    if(SystemSubText != string.Empty)
                     {
                         SystemSubText += "\n";
                     }
                     SystemSubText += "(" + mapSystem.Region + ")";
 
                     Polygon poly = new Polygon();
-                    foreach (Vector2 p in mapSystem.CellPoints)
+                    foreach(Vector2 p in mapSystem.CellPoints)
                     {
                         System.Windows.Point wp = new Point(p.X, p.Y);
                         poly.Points.Add(wp);
@@ -2881,46 +2652,60 @@ namespace SMT
                     MainCanvas.Children.Add(poly);
                 }
 
-                if ((ShowSovOwner) && SystemAlliance != 0 && EM.AllianceIDToName.Keys.Contains(SystemAlliance))
+                if((ShowSovOwner) && SystemAlliance != 0 && EM.AllianceIDToName.Keys.Contains(SystemAlliance))
                 {
                     string allianceName = EM.GetAllianceName(SystemAlliance);
                     string allianceTicker = EM.GetAllianceTicker(SystemAlliance);
-                    string coalitionName = string.Empty;
-
                     string content = allianceTicker;
 
-                    if (MapConf.ShowCoalition && SystemCoalition != null)
-                    {
-                        content = SystemCoalition.Name + " (" + allianceTicker + ")";
-                    }
-
-                    if (SystemSubText != string.Empty)
+                    if(SystemSubText != string.Empty)
                     {
                         SystemSubText += "\n";
                     }
                     SystemSubText += content;
 
-                    if (!AlliancesKeyList.Contains(SystemAlliance))
+                    if(!AlliancesKeyList.Contains(SystemAlliance))
                     {
                         AlliancesKeyList.Add(SystemAlliance);
                     }
                 }
 
-                if (!string.IsNullOrEmpty(SystemSubText))
+                if(!string.IsNullOrEmpty(SystemSubText))
                 {
+
                     TextBlock sysSubText = new TextBlock();
                     sysSubText.Text = SystemSubText;
                     sysSubText.Width = SYSTEM_REGION_TEXT_WIDTH;
+                    sysSubText.Padding = new Thickness(0);
+                    sysSubText.Margin = new Thickness(0);
 
-                    sysSubText.TextAlignment = TextAlignment.Center;
+                    switch(mapSystem.TextPos)
+                    {
+                        case MapSystem.TextPosition.Left:
+                            sysSubText.TextAlignment = TextAlignment.Right;
+                            break;
+
+                        case MapSystem.TextPosition.Right:
+                            sysSubText.TextAlignment = TextAlignment.Left;
+                            break;
+
+                        case MapSystem.TextPosition.Top:
+                            sysSubText.TextAlignment = TextAlignment.Center;
+                            break;
+
+                        case MapSystem.TextPosition.Bottom:
+                            sysSubText.TextAlignment = TextAlignment.Center;
+                            break;
+                    }
+
                     sysSubText.IsHitTestVisible = false;
 
-                    if (MapConf.ActiveColourScheme.SystemSubTextSize > 0)
+                    if(MapConf.ActiveColourScheme.SystemSubTextSize > 0)
                     {
                         sysSubText.FontSize = MapConf.ActiveColourScheme.SystemSubTextSize;
                     }
 
-                    if (isSystemOOR)
+                    if(isSystemOOR)
                     {
                         sysSubText.Foreground = SysOutRegionTextBrush;
                         regionMarkerOffset -= 4;
@@ -2930,94 +2715,13 @@ namespace SMT
                         sysSubText.Foreground = SysInRegionTextBrush;
                     }
 
-                    Canvas.SetLeft(sysSubText, mapSystem.Layout.X + SYSTEM_REGION_TEXT_X_OFFSET);
-                    Canvas.SetTop(sysSubText, mapSystem.Layout.Y + regionMarkerOffset);
-                    Canvas.SetZIndex(sysSubText, SYSTEM_Z_INDEX);
-
-                    MainCanvas.Children.Add(sysSubText);
+                    sp.Children.Add(sysSubText);
                 }
             }
 
             // now add the links
-            foreach (GateHelper gh in systemLinks)
+            foreach(GateHelper gh in systemLinks)
             {
-                /*
-                 Sys links as curves
-
-                double smoothness = 0.02;
-
-                PathFigure pf = new PathFigure();
-                pf.StartPoint = new Point(gh.from.Layout.X, gh.from.Layout.Y);
-
-                BezierSegment bs = new BezierSegment();
-                bs.IsSmoothJoin = true;
-
-                if (Math.Abs(gh.to.Layout.X - gh.from.Layout.X) < Math.Abs(gh.to.Layout.Y - gh.from.Layout.Y))
-                {
-                    bs.Point1 = new Point
-                    {
-                        X = gh.from.Layout.X + ((smoothness * (gh.to.Layout.X - gh.from.Layout.X))),
-                        Y = gh.from.Layout.Y
-                    };
-
-                    bs.Point2 = new Point
-                    {
-                        X = gh.from.Layout.X + ((1 - smoothness) * (gh.to.Layout.X - gh.from.Layout.X)),
-                        Y = gh.from.Layout.Y
-                    };
-                }
-                else
-                {
-                    bs.Point1 = new Point
-                    {
-                        X = gh.from.Layout.X,
-                        Y = gh.from.Layout.Y + ((smoothness * (gh.to.Layout.Y - gh.from.Layout.Y))),
-                    };
-
-                    bs.Point2 = new Point
-                    {
-                        X = gh.from.Layout.X ,
-                        Y = gh.from.Layout.Y + ((1 - smoothness) * (gh.to.Layout.Y - gh.from.Layout.Y)),
-                    };
-                }
-
-                bs.Point3 = new Point
-                {
-                    X = gh.to.Layout.X,
-                    Y = gh.to.Layout.Y
-                };
-
-                PathSegmentCollection psc = new PathSegmentCollection();
-                psc.Add(bs);
-                pf.Segments = psc;
-
-                PathFigureCollection pfc = new PathFigureCollection();
-                pfc.Add(pf);
-
-                PathGeometry pg = new PathGeometry(pfc);
-
-                Path p = new Path();
-                p.Data = pg;
-                p.Stroke = NormalGateBrush;
-
-                if (gh.from.ActualSystem.ConstellationID != gh.to.ActualSystem.ConstellationID)
-                {
-                    p.Stroke = ConstellationGateBrush;
-                }
-
-                if (gh.from.ActualSystem.Region != gh.to.ActualSystem.Region)
-                {
-                    p.Stroke = RegionGateBrush;
-                }
-
-                p.StrokeThickness = 1.2;
-                p.Visibility = Visibility.Visible;
-
-                Canvas.SetZIndex(p, SYSTEM_LINK_INDEX);
-                MainCanvas.Children.Add(p);
-
-                */
-
                 Line sysLink = new Line();
 
                 sysLink.X1 = gh.from.Layout.X;
@@ -3028,33 +2732,33 @@ namespace SMT
 
                 sysLink.Stroke = NormalGateBrush;
 
-                if (gh.from.ActualSystem.ConstellationID != gh.to.ActualSystem.ConstellationID)
+                if(gh.from.ActualSystem.ConstellationID != gh.to.ActualSystem.ConstellationID)
                 {
                     sysLink.Stroke = ConstellationGateBrush;
                 }
 
-                if (gh.from.ActualSystem.Region != gh.to.ActualSystem.Region)
+                if(gh.from.ActualSystem.Region != gh.to.ActualSystem.Region)
                 {
                     sysLink.Stroke = RegionGateBrush;
                 }
 
-                sysLink.StrokeThickness = 1.2;
+                sysLink.StrokeThickness = 2;
                 sysLink.Visibility = Visibility.Visible;
 
                 Canvas.SetZIndex(sysLink, SYSTEM_LINK_INDEX);
                 MainCanvas.Children.Add(sysLink);
             }
 
-            if (ShowJumpBridges && EM.JumpBridges != null)
+            if(ShowJumpBridges && EM.JumpBridges != null)
             {
-                foreach (EVEData.JumpBridge jb in EM.JumpBridges)
+                foreach(EVEData.JumpBridge jb in EM.JumpBridges)
                 {
-                    if (Region.IsSystemOnMap(jb.From) || Region.IsSystemOnMap(jb.To))
+                    if(Region.IsSystemOnMap(jb.From) || Region.IsSystemOnMap(jb.To))
                     {
                         EVEData.MapSystem from;
                         EVEData.System to;
 
-                        if (!Region.IsSystemOnMap(jb.From))
+                        if(!Region.IsSystemOnMap(jb.From))
                         {
                             from = Region.MapSystems[jb.To];
                             to = EM.GetEveSystem(jb.From);
@@ -3068,7 +2772,7 @@ namespace SMT
                         Point startPoint = new Point(from.Layout.X, from.Layout.Y);
                         Point endPoint;
 
-                        if (!Region.IsSystemOnMap(jb.To) || !Region.IsSystemOnMap(jb.From))
+                        if(!Region.IsSystemOnMap(jb.To) || !Region.IsSystemOnMap(jb.From))
                         {
                             endPoint = new Point(from.Layout.X - 20, from.Layout.Y - 40);
 
@@ -3081,7 +2785,7 @@ namespace SMT
 
                             Label jbOutofRegionText = new Label();
 
-                            if (jb.Disabled)
+                            if(jb.Disabled)
                             {
                                 jbOutofSystemBlob.Stroke = DisabledJumpBridgeBrush;
                                 jbOutofRegionText.Foreground = DisabledJumpBridgeBrush;
@@ -3094,7 +2798,7 @@ namespace SMT
                             jbOutofSystemBlob.Fill = jbOutofSystemBlob.Stroke;
 
                             jbOutofRegionText.Content = $"{to.Name}\n({to.Region})";
-                            if (MapConf.ActiveColourScheme.SystemSubTextSize > 2)
+                            if(MapConf.ActiveColourScheme.SystemSubTextSize > 2)
                             {
                                 jbOutofRegionText.FontSize = MapConf.ActiveColourScheme.SystemSubTextSize;
                             }
@@ -3102,7 +2806,7 @@ namespace SMT
 
                             Canvas.SetLeft(jbOutofRegionText, from.Layout.X - 20);
                             Canvas.SetTop(jbOutofRegionText, from.Layout.Y - 60);
-                            Canvas.SetZIndex(jbOutofRegionText, SYSTEM_Z_INDEX);
+                            Canvas.SetZIndex(jbOutofRegionText, ZINDEX_SYSTEM);
 
                             MainCanvas.Children.Add(jbOutofRegionText);
                         }
@@ -3120,11 +2824,11 @@ namespace SMT
                         jbLine.X2 = endPoint.X;
                         jbLine.Y2 = endPoint.Y;
 
-                        jbLine.StrokeThickness = 1;
+                        jbLine.StrokeThickness = 2;
 
                         DoubleCollection dashes = new DoubleCollection();
 
-                        if (!jb.Disabled)
+                        if(!jb.Disabled)
                         {
                             dashes.Add(1.0);
                             dashes.Add(3.0);
@@ -3148,7 +2852,7 @@ namespace SMT
                         da.RepeatBehavior = RepeatBehavior.Forever;
                         Timeline.SetDesiredFrameRate(da, 20);
 
-                        if (!MapConf.DisableJumpBridgesPathAnimation)
+                        if(!MapConf.DisableJumpBridgesPathAnimation)
                         {
                             jbLine.BeginAnimation(Shape.StrokeDashOffsetProperty, da);
                         }
@@ -3161,13 +2865,13 @@ namespace SMT
             }
 
             bool showZakLinks = true;
-            if (showZakLinks && Region.IsSystemOnMap("Zarzakh"))
+            if(showZakLinks && Region.IsSystemOnMap("Zarzakh"))
             {
                 MapSystem zarSystem = Region.MapSystems["Zarzakh"];
 
-                foreach (MapSystem ms in Region.MapSystems.Values)
+                foreach(MapSystem ms in Region.MapSystems.Values)
                 {
-                    if (ms.Name == "Zarzakh" || !ms.ActualSystem.HasJoveGate)
+                    if(ms.Name == "Zarzakh" || !ms.ActualSystem.HasJoveGate)
                     {
                         continue;
                     }
@@ -3189,11 +2893,10 @@ namespace SMT
                     zarLink.StrokeDashArray = dashes;
                     zarLink.Stroke = ConstellationGateBrush;
                     MainCanvas.Children.Add(zarLink);
-
                 }
             }
 
-            if (AlliancesKeyList.Count > 0)
+            if(AlliancesKeyList.Count > 0)
             {
                 AllianceNameList.Visibility = Visibility.Visible;
                 AllianceNameListStackPanel.Children.Clear();
@@ -3205,7 +2908,7 @@ namespace SMT
 
                 Thickness p = new Thickness(1);
 
-                foreach (int allianceID in AlliancesKeyList)
+                foreach(int allianceID in AlliancesKeyList)
                 {
                     string allianceName = EM.GetAllianceName(allianceID);
                     string allianceTicker = EM.GetAllianceTicker(allianceID);
@@ -3218,7 +2921,7 @@ namespace SMT
                     akl.Margin = p;
                     akl.Padding = p;
 
-                    if (allianceID == SelectedAlliance)
+                    if(allianceID == SelectedAlliance)
                     {
                         akl.Foreground = SelectedFont;
                     }
@@ -3228,7 +2931,7 @@ namespace SMT
 
                 List<Label> SortedAlliance = AllianceNameListLabels.OrderBy(an => an.Content).ToList();
 
-                foreach (Label l in SortedAlliance)
+                foreach(Label l in SortedAlliance)
                 {
                     AllianceNameListStackPanel.Children.Add(l);
                 }
@@ -3239,11 +2942,11 @@ namespace SMT
             }
 
             // now add any info items
-            if (InfoLayer != null)
+            if(InfoLayer != null)
             {
-                foreach (InfoItem ii in InfoLayer)
+                foreach(InfoItem ii in InfoLayer)
                 {
-                    if (ii.Region == Region.Name)
+                    if(ii.Region == Region.Name)
                     {
                         Shape s = ii.Draw();
                         MainCanvas.Children.Add(s);
@@ -3258,14 +2961,14 @@ namespace SMT
             string AllianceIDStr = obj.DataContext as string;
             long AllianceID = long.Parse(AllianceIDStr);
 
-            if (e.ClickCount == 2)
+            if(e.ClickCount == 2)
             {
                 string AURL = $"https://zkillboard.com/region/{Region.ID}/alliance/{AllianceID}/";
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(AURL) { UseShellExecute = true });
             }
             else
             {
-                if (SelectedAlliance == AllianceID)
+                if(SelectedAlliance == AllianceID)
                 {
                     SelectedAlliance = 0;
                 }
@@ -3280,32 +2983,32 @@ namespace SMT
         private void characterRightClickAutoRange_Clicked(object sender, RoutedEventArgs e)
         {
             MenuItem mi = sender as MenuItem;
-            if (mi != null)
+            if(mi != null)
             {
                 EveManager.JumpShip js = EveManager.JumpShip.Super;
 
                 LocalCharacter lc = ((MenuItem)mi.Parent).DataContext as LocalCharacter;
 
-                if (mi.DataContext as string == "6")
+                if(mi.DataContext as string == "6")
                 {
                     js = EveManager.JumpShip.Super;
                 }
-                if (mi.DataContext as string == "7")
+                if(mi.DataContext as string == "7")
                 {
                     js = EveManager.JumpShip.Carrier;
                 }
 
-                if (mi.DataContext as string == "8")
+                if(mi.DataContext as string == "8")
                 {
                     js = EveManager.JumpShip.Blops;
                 }
 
-                if (mi.DataContext as string == "10")
+                if(mi.DataContext as string == "10")
                 {
                     js = EveManager.JumpShip.JF;
                 }
 
-                if (mi.DataContext as string == "0")
+                if(mi.DataContext as string == "0")
                 {
                     showJumpDistance = false;
                     currentJumpCharacter = "";
@@ -3343,7 +3046,7 @@ namespace SMT
 
             EVEData.System sd = GlobalSystemDropDownAC.SelectedItem as EVEData.System;
 
-            if (sd != null && Region != null)
+            if(sd != null && Region != null)
             {
                 bool ChangeRegion = sd.Region != Region.Name;
                 SelectSystem(sd.Name, ChangeRegion);
@@ -3353,7 +3056,7 @@ namespace SMT
 
         private void HelpIcon_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (HelpList.Visibility == Visibility.Hidden)
+            if(HelpList.Visibility == Visibility.Hidden)
             {
                 HelpList.Visibility = Visibility.Visible;
                 helpIcon.Fill = new SolidColorBrush(Colors.Yellow);
@@ -3373,7 +3076,6 @@ namespace SMT
             {
                 ReDrawMap(true);
             }), DispatcherPriority.Normal);
-
         }
 
         /// <summary>
@@ -3386,7 +3088,7 @@ namespace SMT
             FollowCharacter = false;
 
             EVEData.MapRegion rd = RegionSelectCB.SelectedItem as EVEData.MapRegion;
-            if (rd == null)
+            if(rd == null)
             {
                 return;
             }
@@ -3399,47 +3101,47 @@ namespace SMT
             EVEData.MapSystem eveSys = ((System.Windows.FrameworkElement)((System.Windows.FrameworkElement)sender).Parent).DataContext as EVEData.MapSystem;
 
             MenuItem mi = sender as MenuItem;
-            if (mi != null)
+            if(mi != null)
             {
                 EveManager.JumpShip js = EveManager.JumpShip.Super;
 
-                if (mi.DataContext as string == "6")
+                if(mi.DataContext as string == "6")
                 {
                     js = EveManager.JumpShip.Super;
                 }
-                if (mi.DataContext as string == "7")
+                if(mi.DataContext as string == "7")
                 {
                     js = EveManager.JumpShip.Carrier;
                 }
 
-                if (mi.DataContext as string == "8")
+                if(mi.DataContext as string == "8")
                 {
                     js = EveManager.JumpShip.Blops;
                 }
 
-                if (mi.DataContext as string == "10")
+                if(mi.DataContext as string == "10")
                 {
                     js = EveManager.JumpShip.JF;
                 }
 
                 activeJumpSpheres[eveSys.Name] = js;
 
-                if (mi.DataContext as string == "0")
+                if(mi.DataContext as string == "0")
                 {
-                    if (activeJumpSpheres.Keys.Contains(eveSys.Name))
+                    if(activeJumpSpheres.Keys.Contains(eveSys.Name))
                     {
                         activeJumpSpheres.Remove(eveSys.Name);
                     }
                 }
 
-                if (mi.DataContext as string == "-1")
+                if(mi.DataContext as string == "-1")
                 {
                     activeJumpSpheres.Clear();
                     currentJumpCharacter = "";
                     currentCharacterJumpSystem = "";
                 }
 
-                if (!string.IsNullOrEmpty(currentJumpCharacter))
+                if(!string.IsNullOrEmpty(currentJumpCharacter))
                 {
                     showJumpDistance = true;
                 }
@@ -3463,12 +3165,12 @@ namespace SMT
 
             EVEData.MapSystem selectedSys = obj.DataContext as EVEData.MapSystem;
 
-            if (e.ChangedButton == MouseButton.Left)
+            if(e.ChangedButton == MouseButton.Left)
             {
-                if (e.ClickCount == 1)
+                if(e.ClickCount == 1)
                 {
                     bool redraw = false;
-                    if (showJumpDistance || (ShowSystemTimers && (MapConf.ShowIhubVunerabilities || MapConf.ShowTCUVunerabilities)))
+                    if(showJumpDistance || (ShowSystemTimers && MapConf.ShowIhubVunerabilities))
                     {
                         redraw = true;
                     }
@@ -3478,11 +3180,11 @@ namespace SMT
                     ReDrawMap(redraw);
                 }
 
-                if (e.ClickCount == 2 && selectedSys.Region != Region.Name)
+                if(e.ClickCount == 2 && selectedSys.Region != Region.Name)
                 {
-                    foreach (EVEData.MapRegion rd in EM.Regions)
+                    foreach(EVEData.MapRegion rd in EM.Regions)
                     {
-                        if (rd.Name == selectedSys.Region)
+                        if(rd.Name == selectedSys.Region)
                         {
                             RegionSelectCB.SelectedItem = rd;
 
@@ -3494,26 +3196,27 @@ namespace SMT
                 }
             }
 
-            if (e.ChangedButton == MouseButton.Right)
+            if(e.ChangedButton == MouseButton.Right)
             {
                 ContextMenu cm = this.FindResource("SysRightClickContextMenu") as ContextMenu;
                 cm.PlacementTarget = obj;
                 cm.DataContext = selectedSys;
 
                 MenuItem setDesto = cm.Items[2] as MenuItem;
-                MenuItem addWaypoint = cm.Items[3] as MenuItem;
-                MenuItem clearRoute = cm.Items[4] as MenuItem;
+                MenuItem addWaypoint = cm.Items[4] as MenuItem;
+                MenuItem clearRoute = cm.Items[6] as MenuItem;
 
-                MenuItem characters = cm.Items[5] as MenuItem;
+                MenuItem characters = cm.Items[7] as MenuItem;
                 characters.Items.Clear();
 
                 setDesto.IsEnabled = false;
                 addWaypoint.IsEnabled = false;
+                clearRoute.IsEnabled = false;
 
                 characters.IsEnabled = false;
                 characters.Visibility = Visibility.Collapsed;
 
-                if (ActiveCharacter != null && ActiveCharacter.ESILinked)
+                if(ActiveCharacter != null && ActiveCharacter.ESILinked)
                 {
                     setDesto.IsEnabled = true;
                     addWaypoint.IsEnabled = true;
@@ -3522,20 +3225,20 @@ namespace SMT
 
                 // get a list of characters in this system
                 List<LocalCharacter> charactersInSystem = new List<LocalCharacter>();
-                foreach (LocalCharacter lc in EM.LocalCharacters)
+                foreach(LocalCharacter lc in EM.LocalCharacters)
                 {
-                    if (lc.Location == selectedSys.Name)
+                    if(lc.Location == selectedSys.Name)
                     {
                         charactersInSystem.Add(lc);
                     }
                 }
 
-                if (charactersInSystem.Count > 0)
+                if(charactersInSystem.Count > 0)
                 {
                     characters.IsEnabled = true;
                     characters.Visibility = Visibility.Visible;
 
-                    foreach (LocalCharacter lc in charactersInSystem)
+                    foreach(LocalCharacter lc in charactersInSystem)
                     {
                         MenuItem miChar = new MenuItem();
                         miChar.Header = lc.Name;
@@ -3577,7 +3280,7 @@ namespace SMT
                         miARJFR.Click += characterRightClickAutoRange_Clicked;
                         miAutoRange.Items.Add(miARJFR);
 
-                        if (!string.IsNullOrEmpty(lc.GameLogWarningText))
+                        if(!string.IsNullOrEmpty(lc.GameLogWarningText))
                         {
                             MenuItem miRemoveWarning = new MenuItem();
                             miRemoveWarning.Header = "Clear Warning";
@@ -3597,7 +3300,7 @@ namespace SMT
             MenuItem mi = sender as MenuItem;
 
             LocalCharacter lc = mi.DataContext as LocalCharacter;
-            if (lc != null)
+            if(lc != null)
             {
                 lc.GameLogWarningText = "";
             }
@@ -3616,7 +3319,7 @@ namespace SMT
 
             Thickness one = new Thickness(1);
 
-            if (obj.IsMouseOver && MapConf.ShowSystemPopup)
+            if(obj.IsMouseOver && MapConf.ShowSystemPopup)
             {
                 SystemInfoPopup.PlacementTarget = obj;
                 SystemInfoPopup.VerticalOffset = 5;
@@ -3640,14 +3343,14 @@ namespace SMT
 
                 bool needSeperator = false;
                 List<string> charNames = new List<string>();
-                foreach (LocalCharacter c in EM.LocalCharacters)
+                foreach(LocalCharacter c in EM.LocalCharacters)
                 {
-                    if (c.Location == selectedSys.Name)
+                    if(c.Location == selectedSys.Name)
                     {
                         needSeperator = true;
                         Label characterlabel = new Label();
                         string cname = c.Name;
-                        if (!c.IsOnline)
+                        if(!c.IsOnline)
                         {
                             cname += " (Offline)";
                         }
@@ -3657,7 +3360,7 @@ namespace SMT
 
                 charNames.Sort();
 
-                foreach (string s in charNames)
+                foreach(string s in charNames)
                 {
                     Label characterlabel = new Label();
                     characterlabel.Padding = one;
@@ -3668,7 +3371,7 @@ namespace SMT
                     SystemInfoPopupSP.Children.Add(characterlabel);
                 }
 
-                if (needSeperator)
+                if(needSeperator)
                 {
                     SystemInfoPopupSP.Children.Add(new Separator());
                 }
@@ -3689,7 +3392,7 @@ namespace SMT
 
                 SystemInfoPopupSP.Children.Add(new Separator());
 
-                if (selectedSys.ActualSystem.ShipKillsLastHour != 0)
+                if(selectedSys.ActualSystem.ShipKillsLastHour != 0)
                 {
                     Label data = new Label();
                     data.Padding = one;
@@ -3699,7 +3402,7 @@ namespace SMT
                     SystemInfoPopupSP.Children.Add(data);
                 }
 
-                if (selectedSys.ActualSystem.PodKillsLastHour != 0)
+                if(selectedSys.ActualSystem.PodKillsLastHour != 0)
                 {
                     Label data = new Label();
                     data.Padding = one;
@@ -3709,7 +3412,7 @@ namespace SMT
                     SystemInfoPopupSP.Children.Add(data);
                 }
 
-                if (selectedSys.ActualSystem.NPCKillsLastHour != 0)
+                if(selectedSys.ActualSystem.NPCKillsLastHour != 0)
                 {
                     Label data = new Label();
                     data.Padding = one;
@@ -3719,7 +3422,7 @@ namespace SMT
                     SystemInfoPopupSP.Children.Add(data);
                 }
 
-                if (selectedSys.ActualSystem.JumpsLastHour != 0)
+                if(selectedSys.ActualSystem.JumpsLastHour != 0)
                 {
                     Label data = new Label();
                     data.Padding = one;
@@ -3730,15 +3433,15 @@ namespace SMT
                     SystemInfoPopupSP.Children.Add(data);
                 }
 
-                if (ShowJumpBridges)
+                if(ShowJumpBridges)
                 {
                     Point from = new Point();
                     Point to = new Point(); ;
                     bool AddJBHighlight = false;
 
-                    foreach (EVEData.JumpBridge jb in EM.JumpBridges)
+                    foreach(EVEData.JumpBridge jb in EM.JumpBridges)
                     {
-                        if (selectedSys.Name == jb.From)
+                        if(selectedSys.Name == jb.From)
                         {
                             Label jbl = new Label();
                             jbl.Padding = one;
@@ -3747,7 +3450,7 @@ namespace SMT
 
                             jbl.Content = $"JB\t: {jb.To}";
 
-                            if (!Region.IsSystemOnMap(jb.To))
+                            if(!Region.IsSystemOnMap(jb.To))
                             {
                                 EVEData.System sys = EM.GetEveSystem(jb.To);
                                 jbl.Content += $" ({sys.Region})";
@@ -3758,7 +3461,7 @@ namespace SMT
                             from.X = selectedSys.Layout.X;
                             from.Y = selectedSys.Layout.Y;
 
-                            if (Region.IsSystemOnMap(jb.To) && !jb.Disabled)
+                            if(Region.IsSystemOnMap(jb.To) && !jb.Disabled)
                             {
                                 MapSystem ms = Region.MapSystems[jb.To];
                                 to.X = ms.Layout.X;
@@ -3767,7 +3470,7 @@ namespace SMT
                             }
                         }
 
-                        if (selectedSys.Name == jb.To)
+                        if(selectedSys.Name == jb.To)
                         {
                             Label jbl = new Label();
                             jbl.Padding = one;
@@ -3776,7 +3479,7 @@ namespace SMT
 
                             jbl.Content = $"JB\t: {jb.From}";
 
-                            if (!Region.IsSystemOnMap(jb.From))
+                            if(!Region.IsSystemOnMap(jb.From))
                             {
                                 EVEData.System sys = EM.GetEveSystem(jb.From);
                                 jbl.Content += $" ({sys.Region})";
@@ -3787,7 +3490,7 @@ namespace SMT
                             from.X = selectedSys.Layout.X;
                             from.Y = selectedSys.Layout.Y;
 
-                            if (Region.IsSystemOnMap(jb.From) && !jb.Disabled)
+                            if(Region.IsSystemOnMap(jb.From) && !jb.Disabled)
                             {
                                 MapSystem ms = Region.MapSystems[jb.From];
                                 to.X = ms.Layout.X;
@@ -3797,7 +3500,10 @@ namespace SMT
                         }
                     }
 
-                    if (AddJBHighlight)
+
+
+
+                    if(AddJBHighlight)
                     {
                         Line jbHighlight = new Line();
 
@@ -3846,13 +3552,61 @@ namespace SMT
                     }
                 }
 
-                if (selectedSys.ActualSystem.IHubOccupancyLevel != 0.0f || selectedSys.ActualSystem.TCUOccupancyLevel != 0.0f)
+                bool addAdditionalHighlights = true;
+                if(addAdditionalHighlights)
+                {
+                    Brush NormalGateBrush = new SolidColorBrush(MapConf.ActiveColourScheme.NormalGateColour);
+                    Brush ConstellationGateBrush = new SolidColorBrush(MapConf.ActiveColourScheme.ConstellationGateColour);
+                    Brush RegionGateBrush = new SolidColorBrush(MapConf.ActiveColourScheme.RegionGateColour);
+
+                    foreach(string connection in selectedSys.ActualSystem.Jumps)
+                    {
+
+
+                        if(Region.MapSystems.ContainsKey(connection))
+                        {
+                            MapSystem s1 = Region.MapSystems[connection];
+
+                            Line sysLink = new Line();
+                            sysLink.Stroke = NormalGateBrush;
+
+                            if(selectedSys.ActualSystem.ConstellationID != s1.ActualSystem.ConstellationID)
+                            {
+                                sysLink.Stroke = ConstellationGateBrush;
+                            }
+
+                            if(selectedSys.ActualSystem.Region != s1.ActualSystem.Region)
+                            {
+                                sysLink.Stroke = RegionGateBrush;
+                            }
+
+
+
+                            sysLink.X1 = selectedSys.Layout.X;
+                            sysLink.Y1 = selectedSys.Layout.Y;
+
+                            sysLink.X2 = s1.Layout.X;
+                            sysLink.Y2 = s1.Layout.Y;
+
+
+                            sysLink.StrokeThickness = 4;
+
+                            DynamicMapElementsSysLinkHighlight.Add(sysLink);
+                            Canvas.SetZIndex(sysLink, 19);
+                            MainCanvas.Children.Add(sysLink);
+                        }
+
+
+                    }
+                }
+
+                if(selectedSys.ActualSystem.IHubOccupancyLevel != 0.0f || selectedSys.ActualSystem.TCUOccupancyLevel != 0.0f)
                 {
                     SystemInfoPopupSP.Children.Add(new Separator());
                 }
 
                 // update IHubInfo
-                if (selectedSys.ActualSystem.IHubOccupancyLevel != 0.0f)
+                if(selectedSys.ActualSystem.IHubOccupancyLevel != 0.0f)
                 {
                     Label sov = new Label();
                     sov.Padding = one;
@@ -3863,7 +3617,7 @@ namespace SMT
                 }
 
                 // update TCUInfo
-                if (selectedSys.ActualSystem.TCUOccupancyLevel != 0.0f)
+                if(selectedSys.ActualSystem.TCUOccupancyLevel != 0.0f)
                 {
                     Label sov = new Label();
                     sov.Padding = one;
@@ -3873,10 +3627,11 @@ namespace SMT
                     SystemInfoPopupSP.Children.Add(sov);
                 }
 
+                List<TheraConnection> currentTheraConnections = EM.TheraConnections.ToList();
                 // update Thera Info
-                foreach (EVEData.TheraConnection tc in EM.TheraConnections)
+                foreach(EVEData.TheraConnection tc in currentTheraConnections)
                 {
-                    if (selectedSys.Name == tc.System)
+                    if(selectedSys.Name == tc.System)
                     {
                         SystemInfoPopupSP.Children.Add(new Separator());
 
@@ -3895,11 +3650,35 @@ namespace SMT
                         SystemInfoPopupSP.Children.Add(tl);
                     }
                 }
+                List<TurnurConnection> currentTurnurConnections = EM.TurnurConnections.ToList();
+
+                // update Turnur Info
+                foreach(EVEData.TurnurConnection tc in currentTurnurConnections)
+                {
+                    if(selectedSys.Name == tc.System)
+                    {
+                        SystemInfoPopupSP.Children.Add(new Separator());
+
+                        Label tl = new Label();
+                        tl.Padding = one;
+                        tl.Margin = one;
+                        tl.Content = $"Turnur\t: in {tc.InSignatureID}";
+                        tl.Foreground = new SolidColorBrush(MapConf.ActiveColourScheme.PopupText);
+                        SystemInfoPopupSP.Children.Add(tl);
+
+                        tl = new Label();
+                        tl.Padding = one;
+                        tl.Margin = one;
+                        tl.Content = $"Turnur\t: out {tc.OutSignatureID}";
+                        tl.Foreground = new SolidColorBrush(MapConf.ActiveColourScheme.PopupText);
+                        SystemInfoPopupSP.Children.Add(tl);
+                    }
+                }
 
                 // storms
-                foreach (EVEData.Storm s in EM.MetaliminalStorms)
+                foreach(EVEData.Storm s in EM.MetaliminalStorms)
                 {
-                    if (selectedSys.Name == s.System)
+                    if(selectedSys.Name == s.System)
                     {
                         SystemInfoPopupSP.Children.Add(new Separator());
 
@@ -3915,9 +3694,9 @@ namespace SMT
                 SystemInfoPopupSP.Children.Add(new Separator());
 
                 // Points of interest
-                foreach (POI p in EM.PointsOfInterest)
+                foreach(POI p in EM.PointsOfInterest)
                 {
-                    if (selectedSys.Name == p.System)
+                    if(selectedSys.Name == p.System)
                     {
                         Label tl = new Label();
                         tl.Padding = one;
@@ -3928,7 +3707,7 @@ namespace SMT
                     }
                 }
 
-                if (MapConf.ShowTrigInvasions && selectedSys.ActualSystem.TrigInvasionStatus != EVEData.System.EdenComTrigStatus.None)
+                if(MapConf.ShowTrigInvasions && selectedSys.ActualSystem.TrigInvasionStatus != EVEData.System.EdenComTrigStatus.None)
                 {
                     Label trigInfo = new Label();
                     trigInfo.Padding = one;
@@ -3938,18 +3717,38 @@ namespace SMT
                     SystemInfoPopupSP.Children.Add(trigInfo);
                 }
 
+                // trigger the hover event
+
+                if(SystemHoverEvent != null)
+                {
+                    SystemHoverEvent(selectedSys.Name);
+                }
+
                 SystemInfoPopup.IsOpen = true;
             }
             else
             {
                 SystemInfoPopup.IsOpen = false;
 
-                foreach (UIElement uie in DynamicMapElementsJBHighlight)
+                foreach(UIElement uie in DynamicMapElementsSysLinkHighlight)
                 {
                     MainCanvas.Children.Remove(uie);
                 }
 
+                foreach(UIElement uie in DynamicMapElementsJBHighlight)
+                {
+                    MainCanvas.Children.Remove(uie);
+                }
+
+                // trigger the hover event
+
+                if(SystemHoverEvent != null)
+                {
+                    SystemHoverEvent(string.Empty);
+                }
+
                 DynamicMapElementsJBHighlight.Clear();
+                DynamicMapElementsSysLinkHighlight.Clear();
             }
         }
 
@@ -3961,9 +3760,21 @@ namespace SMT
         private void SysContexMenuItemAddWaypoint_Click(object sender, RoutedEventArgs e)
         {
             EVEData.MapSystem eveSys = ((System.Windows.FrameworkElement)((System.Windows.FrameworkElement)sender).Parent).DataContext as EVEData.MapSystem;
-            if (ActiveCharacter != null)
+            if(ActiveCharacter != null)
             {
                 ActiveCharacter.AddDestination(eveSys.ActualSystem.ID, false);
+            }
+        }
+
+        private void SysContexMenuItemAddWaypointAll_Click(object sender, RoutedEventArgs e)
+        {
+            EVEData.MapSystem eveSys = ((System.Windows.FrameworkElement)((System.Windows.FrameworkElement)sender).Parent).DataContext as EVEData.MapSystem;
+            foreach(LocalCharacter lc in EM.LocalCharacters)
+            {
+                if(lc.IsOnline && lc.ESILinked)
+                {
+                    lc.AddDestination(eveSys.ActualSystem.ID, false);
+                }
             }
         }
 
@@ -3974,7 +3785,7 @@ namespace SMT
         /// <param name="e"></param>
         private void SysContexMenuItemClearRoute_Click(object sender, RoutedEventArgs e)
         {
-            if (ActiveCharacter != null)
+            if(ActiveCharacter != null)
             {
                 ActiveCharacter.ClearAllWaypoints();
             }
@@ -3991,21 +3802,29 @@ namespace SMT
 
             try
             {
-                if (eveSys != null)
+                if(eveSys != null)
                 {
-                    bool CopyWithMeta = true;
-                    if (CopyWithMeta)
-                    {
-                        Clipboard.SetText($"<url=showinfo:5//{eveSys.ActualSystem.ID}>{eveSys.Name}</url>");
-                    }
-                    else
-                    {
-                        Clipboard.SetText(eveSys.Name);
-                    }
+                    Clipboard.SetText(eveSys.Name);
                 }
             }
             catch { }
         }
+
+        private void SysContexMenuItemCopyEncoded_Click(object sender, RoutedEventArgs e)
+        {
+            EVEData.MapSystem eveSys = ((System.Windows.FrameworkElement)((System.Windows.FrameworkElement)sender).Parent).DataContext as EVEData.MapSystem;
+
+            try
+            {
+                if(eveSys != null)
+                {
+                    Clipboard.SetText($"<url=showinfo:5//{eveSys.ActualSystem.ID}>{eveSys.Name}</url>");
+                }
+            }
+            catch { }
+        }
+
+
 
         /// <summary>
         /// Dotlan Clicked
@@ -4029,9 +3848,21 @@ namespace SMT
         private void SysContexMenuItemSetDestination_Click(object sender, RoutedEventArgs e)
         {
             EVEData.MapSystem eveSys = ((System.Windows.FrameworkElement)((System.Windows.FrameworkElement)sender).Parent).DataContext as EVEData.MapSystem;
-            if (ActiveCharacter != null)
+            if(ActiveCharacter != null)
             {
                 ActiveCharacter.AddDestination(eveSys.ActualSystem.ID, true);
+            }
+        }
+
+        private void SysContexMenuItemSetDestinationAll_Click(object sender, RoutedEventArgs e)
+        {
+            EVEData.MapSystem eveSys = ((System.Windows.FrameworkElement)((System.Windows.FrameworkElement)sender).Parent).DataContext as EVEData.MapSystem;
+            foreach(LocalCharacter lc in EM.LocalCharacters)
+            {
+                if(lc.IsOnline && lc.ESILinked)
+                {
+                    lc.AddDestination(eveSys.ActualSystem.ID, true);
+                }
             }
         }
 
@@ -4061,7 +3892,7 @@ namespace SMT
         {
             EVEData.MapSystem sd = SystemDropDownAC.SelectedItem as EVEData.MapSystem;
 
-            if (sd != null)
+            if(sd != null)
             {
                 SelectSystem(sd.Name);
                 ReDrawMap(false);
@@ -4075,17 +3906,16 @@ namespace SMT
         /// <param name="e"></param>
         private void UiRefreshTimer_Tick(object sender, EventArgs e)
         {
-            if (currentJumpCharacter != "")
+            if(currentJumpCharacter != "")
             {
-                foreach (LocalCharacter c in EM.LocalCharacters)
+                foreach(LocalCharacter c in EM.LocalCharacters)
                 {
-                    if (c.Name == currentJumpCharacter)
+                    if(c.Name == currentJumpCharacter)
                     {
                         currentCharacterJumpSystem = c.Location;
                     }
                 }
             }
-
 
             Application.Current.Dispatcher.Invoke((Action)(() =>
             {

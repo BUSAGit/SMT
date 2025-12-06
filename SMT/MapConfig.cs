@@ -7,7 +7,7 @@ namespace SMT
 {
     public class MapConfig : INotifyPropertyChanged
     {
-        public static readonly string SaveVersion = "01";
+        public static readonly string SaveVersion = "05";
 
         [Browsable(false)]
         public MapColours ActiveColourScheme;
@@ -23,11 +23,12 @@ namespace SMT
         private bool m_DecloakResponse;
 //SMT_MOD_END
 
-        private bool m_FlashWindow;
+        private bool m_FlashWindow = true;
         private bool m_FlashWindowOnlyInDangerZone;
 
-        private bool m_PlayIntelSound;
-        private bool m_PlaySoundOnlyInDangerZone;
+        private bool m_PlayIntelSound = true;
+        private bool m_PlayIntelSoundOnAlert = true;
+        private bool m_PlaySoundOnlyInDangerZone = false;
 
         private string m_DefaultRegion;
 
@@ -46,7 +47,6 @@ namespace SMT
         private bool m_showCompactCharactersOnMap = false;
         private bool m_showOfflineCharactersOnMap = true;
         private bool m_ShowCharacterNamesOnMap = true;
-        private bool m_ShowCoalition;
 
         private bool m_ShowDangerZone;
 
@@ -59,7 +59,6 @@ namespace SMT
 
         private bool m_ShowRegionStandings;
         private bool m_ShowSimpleSecurityView;
-        private bool m_ShowTCUVunerabilities;
 
         private bool m_ShowToolBox = true;
 
@@ -74,9 +73,6 @@ namespace SMT
 
         private bool m_ShowZKillData;
 
-        private bool m_SOVBasedonTCU;
-
-        private bool m_SOVShowConflicts;
         private bool m_SyncActiveCharacterBasedOnActiveEVEClient;
         private double m_UniverseDataScale = 1.0f;
 
@@ -88,9 +84,11 @@ namespace SMT
 
         private int m_ZkillExpireTimeMinutes;
 
-        private bool m_drawRoute;
+        private bool m_drawRoute = true;
 
-        private bool m_followOnZoom;
+        private bool m_followOnZoom = false;
+
+        private bool m_ResetZoomOnRegionChange = true;
 
         private string m_CustomEveLogFolderLocation;
 
@@ -115,6 +113,8 @@ namespace SMT
         private bool m_overlayShowRoute = true;
         private bool m_overlayShowJumpBridges = true;
         private bool m_overlayShowSystemNames = false;
+        private bool m_overlayIndividualCharacterWindows = false;
+        private string m_overlayAdditionalCharacterNamesDisplay = "All";
 
         public MapConfig()
         {
@@ -148,7 +148,7 @@ namespace SMT
             }
             set
             {
-                if (!value)
+                if(!value)
                 {
                     CloseToTray = false;
                 }
@@ -253,9 +253,6 @@ namespace SMT
         public bool ToolBox_ShowSovOwner { get; set; }
 
         [Browsable(false)]
-        public bool ToolBox_ShowStructureFuel { get; set; }
-
-        [Browsable(false)]
         public bool ToolBox_ShowStandings { get; set; }
 
         [Browsable(false)]
@@ -269,8 +266,6 @@ namespace SMT
 
         [Browsable(false)]
         public double ToolBox_ESIOverlayScale { get; set; }
-
-
 
         [Browsable(false)]
         public bool Debug_EnableMapEdit { get; set; }
@@ -337,6 +332,20 @@ namespace SMT
             }
         }
 
+        public bool ResetZoomOnRegionChange
+        {
+            get
+            {
+                return m_ResetZoomOnRegionChange;
+            }
+            set
+            {
+                m_ResetZoomOnRegionChange = value;
+                OnPropertyChanged("ResetZoomOnRegionChange");
+            }
+        }
+
+
         public bool LimitESIDataToRegion
         {
             get
@@ -371,7 +380,7 @@ namespace SMT
             }
             set
             {
-                if (value >= 30)
+                if(value >= 30)
                 {
                     m_MaxESIOverlayValue = value;
                 }
@@ -394,7 +403,7 @@ namespace SMT
             set
             {
                 // clamp to 1 miniumum
-                if (value > 0)
+                if(value > 0)
                 {
                     m_FleetMaxMembersPerSystem = value;
                 }
@@ -447,7 +456,7 @@ namespace SMT
             }
             set
             {
-                if (value > 20)
+                if(value > 20)
                 {
                     m_IntelTextSize = 20;
                 }
@@ -456,7 +465,7 @@ namespace SMT
                     m_IntelTextSize = value;
                 }
 
-                if (value < 8)
+                if(value < 8)
                 {
                     m_IntelTextSize = 8;
                 }
@@ -499,7 +508,7 @@ namespace SMT
             set
             {
                 // clamp to 30s miniumum
-                if (value > 30)
+                if(value > 30)
                 {
                     m_MaxIntelSeconds = value;
                 }
@@ -520,12 +529,27 @@ namespace SMT
             }
             set
             {
-                if (!value)
+                if(!value)
                 {
                     PlaySoundOnlyInDangerZone = false;
                 }
                 m_PlayIntelSound = value;
                 OnPropertyChanged("PlayIntelSound");
+            }
+        }
+
+        [Category("Intel")]
+        [DisplayName("Warning on Alert Text")]
+        public bool PlayIntelSoundOnAlert
+        {
+            get
+            {
+                return m_PlayIntelSoundOnAlert;
+            }
+            set
+            {
+                m_PlayIntelSoundOnAlert = value;
+                OnPropertyChanged("PlayIntelSoundOnAlert");
             }
         }
 
@@ -543,7 +567,7 @@ namespace SMT
             }
             set
             {
-                if (!value)
+                if(!value)
                 {
                     FlashWindowOnlyInDangerZone = false;
                 }
@@ -629,22 +653,6 @@ namespace SMT
             }
         }
 
-        [Category("SOV")]
-        [DisplayName("Show Coalition")]
-        public bool ShowCoalition
-        {
-            get
-            {
-                return m_ShowCoalition;
-            }
-
-            set
-            {
-                m_ShowCoalition = value;
-                OnPropertyChanged("ShowCoalition");
-            }
-        }
-
         [Category("Navigation")]
         [DisplayName("Show Cyno Beacons")]
         public bool ShowCynoBeacons { get; set; }
@@ -676,10 +684,8 @@ namespace SMT
             set
             {
                 m_ShowIhubVunerabilities = value;
-                m_ShowTCUVunerabilities = !m_ShowIhubVunerabilities;
 
                 OnPropertyChanged("ShowIhubVunerabilities");
-                OnPropertyChanged("ShowTCUVunerabilities");
             }
         }
 
@@ -741,7 +747,7 @@ namespace SMT
             {
                 m_ShowRegionStandings = value;
 
-                if (m_ShowRegionStandings)
+                if(m_ShowRegionStandings)
                 {
                     ShowUniverseRats = false;
                     ShowUniversePods = false;
@@ -770,25 +776,6 @@ namespace SMT
         [Category("General")]
         [DisplayName("System Popup")]
         public bool ShowSystemPopup { get; set; }
-
-        [Category("SOV")]
-        [DisplayName("Show TCU Timers")]
-        public bool ShowTCUVunerabilities
-        {
-            get
-            {
-                return m_ShowTCUVunerabilities;
-            }
-
-            set
-            {
-                m_ShowTCUVunerabilities = value;
-                m_ShowIhubVunerabilities = !m_ShowTCUVunerabilities;
-
-                OnPropertyChanged("ShowIhubVunerabilities");
-                OnPropertyChanged("ShowTCUVunerabilities");
-            }
-        }
 
         [Category("General")]
         [DisplayName("Show Toolbox")]
@@ -834,7 +821,7 @@ namespace SMT
             {
                 m_ShowUniverseKills = value;
 
-                if (m_ShowUniverseKills)
+                if(m_ShowUniverseKills)
                 {
                     ShowRegionStandings = false;
                     ShowUniverseRats = false;
@@ -858,7 +845,7 @@ namespace SMT
             set
             {
                 m_ShowUniversePods = value;
-                if (ShowUniversePods)
+                if(ShowUniversePods)
                 {
                     ShowRegionStandings = false;
                     ShowUniverseRats = false;
@@ -882,7 +869,7 @@ namespace SMT
             set
             {
                 m_ShowUniverseRats = value;
-                if (m_ShowUniverseRats)
+                if(m_ShowUniverseRats)
                 {
                     ShowRegionStandings = false;
                     ShowUniversePods = false;
@@ -905,36 +892,6 @@ namespace SMT
             {
                 m_ShowZKillData = value;
                 OnPropertyChanged("ShowZKillData");
-            }
-        }
-
-        [Category("SOV")]
-        [DisplayName("Show Sov Based on TCU")]
-        public bool SOVBasedITCU
-        {
-            get
-            {
-                return m_SOVBasedonTCU;
-            }
-            set
-            {
-                m_SOVBasedonTCU = value;
-                OnPropertyChanged("SOVBasedITCU");
-            }
-        }
-
-        [Category("SOV")]
-        [DisplayName("Show Sov Conflicts")]
-        public bool SOVShowConflicts
-        {
-            get
-            {
-                return m_SOVShowConflicts;
-            }
-            set
-            {
-                m_SOVShowConflicts = value;
-                OnPropertyChanged("SOVShowConflicts");
             }
         }
 
@@ -965,7 +922,7 @@ namespace SMT
             {
                 m_UniverseDataScale = value;
 
-                if (m_UniverseDataScale < 0.01)
+                if(m_UniverseDataScale < 0.01)
                 {
                     m_UniverseDataScale = 0.01;
                 }
@@ -1018,7 +975,7 @@ namespace SMT
             set
             {
                 m_UpcomingSovMinutes = value;
-                if (m_UpcomingSovMinutes < 5)
+                if(m_UpcomingSovMinutes < 5)
                 {
                     m_UpcomingSovMinutes = 5;
                 }
@@ -1204,6 +1161,38 @@ namespace SMT
         }
 
         [Category("Overlay")]
+        [DisplayName("Overlay Individual Character Windows")]
+        public bool OverlayIndividualCharacterWindows
+        {
+            get
+            {
+                return m_overlayIndividualCharacterWindows;
+            }
+            set
+            {
+                m_overlayIndividualCharacterWindows = value;
+
+                OnPropertyChanged("OverlayIndividualCharacterWindows");
+            }
+        }
+
+        [Category("Overlay")]
+        [DisplayName("Overlay Additional Character Names Display")]
+        public string OverlayAdditionalCharacterNamesDisplay
+        {
+            get
+            {
+                return m_overlayAdditionalCharacterNamesDisplay;
+            }
+            set
+            {
+                m_overlayAdditionalCharacterNamesDisplay = value;
+
+                OnPropertyChanged("OverlayAdditionalCharacterNamesDisplay");
+            }
+        }
+
+        [Category("Overlay")]
         [DisplayName("Overlay Show System Names")]
         public bool OverlayShowSystemNames
         {
@@ -1277,7 +1266,7 @@ namespace SMT
             set
             {
                 m_ZkillExpireTimeMinutes = value;
-                if (m_ZkillExpireTimeMinutes < 5)
+                if(m_ZkillExpireTimeMinutes < 5)
                 {
                     m_UpcomingSovMinutes = 5;
                 }
@@ -1346,6 +1335,8 @@ namespace SMT
 
                 TheraEntranceRegion = Colors.YellowGreen,
                 TheraEntranceSystem = Colors.YellowGreen,
+                ThurnurEntranceRegion = Colors.OrangeRed,
+                ThurnurEntranceSystem = Colors.OrangeRed,
 
                 ZKillDataOverlay = Colors.Purple
             };
@@ -1369,12 +1360,12 @@ namespace SMT
             ShowTrueSec = true;
             JumpRangeInAsOutline = true;
             ShowActiveIncursions = true;
-            SOVShowConflicts = true;
-            SOVBasedITCU = true;
-            UseESIForCharacterPositions = true;
+            UseESIForCharacterPositions = false;
             ShowCharacterNamesOnMap = true;
             ShowOfflineCharactersOnMap = true;
             ShowIhubVunerabilities = true;
+            PlayIntelSoundOnUnknown = true;
+
 
             ShowJoveObservatories = true;
             ShowCynoBeacons = true;
@@ -1396,16 +1387,23 @@ namespace SMT
             OverlayShowRoute = true;
             OverlayShowJumpBridges = true;
             OverlayShowSystemNames = false;
+            OverlayAdditionalCharacterNamesDisplay = "All";
 
             IntelFreshTime = 30;
             IntelStaleTime = 120;
             IntelHistoricTime = 600;
+
+            ToolBox_ShowJumpBridges = true;
+            ToolBox_ShowSovOwner = true;
+
+            
+
         }
 
         protected void OnPropertyChanged(string name)
         {
             PropertyChangedEventHandler handler = PropertyChanged;
-            if (handler != null)
+            if(handler != null)
             {
                 handler(this, new PropertyChangedEventArgs(name));
             }

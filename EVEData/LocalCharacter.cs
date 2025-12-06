@@ -7,7 +7,7 @@ namespace SMT.EVEData
 {
     //jumpclones
 
-    public class LocalCharacter : Character, INotifyPropertyChanged
+    public class LocalCharacter : Character, INotifyPropertyChanged 
     {
         public static readonly string SaveVersion = "03";
 
@@ -49,19 +49,27 @@ namespace SMT.EVEData
 
         private bool m_UseZarzakhRouting;
 
+        private bool m_UseTurnurRouting;
+
         private bool m_isOnline;
 
-//SMT_MOD_BEGIN
         private bool m_ObservatoryDecloakWarningEnabled;
-
+		
+//SMT_MOD_BEGIN
         private bool m_SpecialRatNotificationEnabled;
 //SMT_MOD_END
+
+        private bool m_GateDecloakWarningEnabled;
+
+        private bool m_DecloakWarningEnabled;
 
         private bool m_CombatWarningEnabled;
 
         private bool routeNeedsUpdate = false;
 
         private int ssoErrorCount = 0;
+
+        private int m_activeRouteLength = 0;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Character" /> class
@@ -105,13 +113,13 @@ namespace SMT.EVEData
 
             DangerZoneRange = 5;
 
-            DockableStructures = new Dictionary<string, List<StructureIDs.StructureIdData>>();
-
             UseAnsiblexGates = true;
 
             IsOnline = true;
             CombatWarningEnabled = true;
             ObservatoryDecloakWarningEnabled = true;
+            DecloakWarningEnabled = true;
+            GateDecloakWarningEnabled = true;
 //SMT_MOD_BEGIN
             m_SpecialRatNotificationEnabled = false;
 //SMT_MOD_END
@@ -133,6 +141,8 @@ namespace SMT.EVEData
 
             CombatWarningEnabled = false;
             ObservatoryDecloakWarningEnabled = true;
+            DecloakWarningEnabled = true;
+            GateDecloakWarningEnabled = true;
 //SMT_MOD_BEGIN
             m_SpecialRatNotificationEnabled = false;
 //SMT_MOD_END
@@ -146,14 +156,21 @@ namespace SMT.EVEData
         [XmlIgnoreAttribute]
         public List<Navigation.RoutePoint> ActiveRoute { get; set; }
 
+        public int ActiveRouteLength
+        {
+            get
+            {
+                return m_activeRouteLength;
+            }
+            set
+            {
+                m_activeRouteLength = value;
+                OnPropertyChanged("ActiveRouteLength");
+            }
+        }
+
         public bool DangerZoneActive { get; set; }
         public bool DeepSearchEnabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets the character structure dictionary
-        /// </summary>
-        [XmlIgnoreAttribute]
-        public Dictionary<string, List<StructureIDs.StructureIdData>> DockableStructures { get; set; }
 
         /// <summary>
         /// Gets or sets the ESI access token
@@ -223,6 +240,32 @@ namespace SMT.EVEData
             {
                 m_ObservatoryDecloakWarningEnabled = value;
                 OnPropertyChanged("ObservatoryDecloakWarningEnabled");
+            }
+        }
+
+        public bool GateDecloakWarningEnabled
+        {
+            get
+            {
+                return m_GateDecloakWarningEnabled;
+            }
+            set
+            {
+                m_GateDecloakWarningEnabled = value;
+                OnPropertyChanged("GateDecloakWarningEnabled");
+            }
+        }
+
+        public bool DecloakWarningEnabled
+        {
+            get
+            {
+                return m_DecloakWarningEnabled;
+            }
+            set
+            {
+                m_DecloakWarningEnabled = value;
+                OnPropertyChanged("DecloakWarningEnabled");
             }
         }
 //SMT_MOD_BEGIN
@@ -407,6 +450,25 @@ namespace SMT.EVEData
             }
         }
 
+        public bool UseTurnurRouting
+        {
+            get
+            {
+                return m_UseTurnurRouting;
+            }
+            set
+            {
+                if (m_UseTurnurRouting == value)
+                {
+                    return;
+                }
+
+                m_UseTurnurRouting = value;
+                routeNeedsUpdate = true;
+                esiRouteNeedsUpdate = true;
+                OnPropertyChanged("UseTurnurRouting");
+            }
+        }
 
         public int DangerZoneRange { get; set; }
 
@@ -444,6 +506,7 @@ namespace SMT.EVEData
                 {
                     Waypoints.Clear();
                     ActiveRoute.Clear();
+                    ActiveRouteLength = 0;
                 }
             }
 
@@ -458,6 +521,7 @@ namespace SMT.EVEData
             lock (ActiveRouteLock)
             {
                 ActiveRoute.Clear();
+                ActiveRouteLength = 0;
                 Waypoints.Clear();
             }
             routeNeedsUpdate = true;
@@ -619,6 +683,7 @@ namespace SMT.EVEData
             return toStr;
         }
 
+
         /// <summary>
         /// Update the Character info
         /// </summary>
@@ -633,7 +698,8 @@ namespace SMT.EVEData
                     await UpdateInfoFromESI().ConfigureAwait(false);
                 }
 
-                if (EveManager.Instance.UseESIForCharacterPositions)
+                // if we're forcing ESI for our location OR we havent had one yet (due to timeout errors with the location endpoint)
+                if (EveManager.Instance.UseESIForCharacterPositions || string.IsNullOrEmpty(Location))
                 {
                     await UpdatePositionFromESI().ConfigureAwait(false);
                 }
@@ -674,7 +740,7 @@ namespace SMT.EVEData
         /// <summary>
         /// Refresh the ESI access token
         /// </summary>
-        private async Task RefreshAccessToken()
+        public async Task RefreshAccessToken()
         {
             if (String.IsNullOrEmpty(ESIRefreshToken) || !ESILinked)
             {
@@ -765,11 +831,19 @@ namespace SMT.EVEData
 
                 // grab the simple list of thera connections
                 List<string> currentActiveTheraConnections = new List<string>();
-                foreach (TheraConnection tc in EveManager.Instance.TheraConnections)
+                foreach (TheraConnection tc in EveManager.Instance.TheraConnections.ToList())
                 {
                     currentActiveTheraConnections.Add(tc.System);
                 }
                 Navigation.UpdateTheraConnections(currentActiveTheraConnections);
+
+                // grab the simple list of turnur connections
+                List<string> currentActiveTurnurConnections = new List<string>();
+                foreach (TurnurConnection tc in EveManager.Instance.TurnurConnections.ToList())
+                {
+                    currentActiveTurnurConnections.Add(tc.System);
+                }
+                Navigation.UpdateTurnurConnections(currentActiveTurnurConnections);
 
                 lock (ActiveRouteLock)
                 {
@@ -787,7 +861,7 @@ namespace SMT.EVEData
                     start = end;
                     end = Waypoints[i];
 
-                    List<Navigation.RoutePoint> sysList = Navigation.Navigate(start, end, UseAnsiblexGates, UseTheraRouting, UseZarzakhRouting, NavigationMode);
+                    List<Navigation.RoutePoint> sysList = Navigation.Navigate(start, end, UseAnsiblexGates, UseTheraRouting, UseZarzakhRouting, UseTurnurRouting, NavigationMode);
 
                     if (sysList != null)
                     {
@@ -800,6 +874,8 @@ namespace SMT.EVEData
                         }
                     }
                 }
+
+                ActiveRouteLength = ActiveRoute.Count;
             }
 
             if (esiRouteNeedsUpdate && !esiRouteUpdating)
@@ -815,9 +891,10 @@ namespace SMT.EVEData
                     {
                         // explicitly add interim waypoints for ansiblex gates or actual waypoints
                         if (
-                                rp.GateToTake == Navigation.GateType.Ansiblex || 
-                                rp.GateToTake == Navigation.GateType.Thera || 
-                                rp.GateToTake == Navigation.GateType.Zarzakh|| 
+                                rp.GateToTake == Navigation.GateType.Ansiblex ||
+                                rp.GateToTake == Navigation.GateType.Thera ||
+                                rp.GateToTake == Navigation.GateType.Turnur ||
+                                rp.GateToTake == Navigation.GateType.Zarzakh ||
                                 Waypoints.Contains(rp.SystemName)
                             )
                         {
@@ -1130,6 +1207,7 @@ namespace SMT.EVEData
                         while (page < maxPageCount);
                     }
 
+                    /*
                     // personal contacts
                     {
                         page = 0;
@@ -1170,6 +1248,7 @@ namespace SMT.EVEData
                         }
                         while (page < maxPageCount);
                     }
+                    */
                 }
 
                 // get the character portrait
@@ -1284,7 +1363,7 @@ namespace SMT.EVEData
         /// <summary>
         /// Update the characters position from ESI (will override the position read from any log files
         /// </summary>
-        private async Task UpdatePositionFromESI()
+        public async Task UpdatePositionFromESI()
         {
             if (ID == 0 || !ESILinked || ESIAuthData == null)
             {

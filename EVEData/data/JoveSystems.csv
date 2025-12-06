@@ -11,6 +11,7 @@ System;Constelation;Space;Region
 0D-CHA;Sole;Null;Outer Ring
 0LTQ-C;49A-BZ;Null;Syndicate
 0LY-W1;FQ-COP;Null;Cache
+0M-24X;PGPJ-8;Null;Etherium Reach
 0MV-4W;5YHF-H;Null;Vale of the Silent
 0P-U0Q;6I-3VX;Null;Tenerifis
 12YA-2;U8-CWA;Null;Pure Blind
@@ -135,6 +136,7 @@ System;Constelation;Space;Region
 9-ZA4Z;Q0-4FU;Null;Perrigen Falls
 92K-H2;N32Z-Z;Null;Venal
 99-0GS;U7-GIV;Null;Omist
+9BC-EB;YCM-AI;Null;Scalding Pass
 9IPC-E;W9MQ-1;Null;Venal
 9MWZ-B;O5QG-M;Null;Omist
 9N-0HF;5F8-PZ;Null;Detorid
@@ -349,7 +351,6 @@ EUU-4N;0-YMZM;Null;Insmother
 Evaulon;Amevync;Low;Placid
 EX-0LQ;ZW-BY5;Null;Catch
 Eygfe;Ankard;High;Metropolis
-Eygfe;Ankard;High;Metropolis
 Eystur;Sveipar;High;Heimatar
 F-749O;X-VN63;Null;Tribute
 F-9PXR;1-A81R;Null;Delve
@@ -406,6 +407,7 @@ GN-PDU;4YFT-F;Null;Scalding Pass
 GN7-XY;ZQ2-CF;Null;Providence
 GPD5-0;760-9C;Null;Wicked Creek
 GQ2S-8;GEP-XF;Null;Paragon Soul
+GR-J8B;6KFH-X;Null;Period Basis
 GR-X26;5F8-PZ;Null;Detorid
 GTB-O4;E1L-UY;Null;The Spire
 GU-9F4;QZJ-FL;Null;Impass
@@ -603,6 +605,7 @@ LMM7-L;BVA-YH;Null;Cache
 LQ-OAI;02QH-A;Null;Scalding Pass
 LRWD-B;BZ-10K;Null;Branch
 LS9B-9;0-8MWQ;Null;Vale of the Silent
+LTT-AP;6GU-AT;Null;Outer Passage
 LW-YEW;9BGY-6;Null;Perrigen Falls
 LX-ZOJ;NK-AOZ;Null;Geminate
 M-CNUD;VS-8P0;Null;Cache
@@ -628,7 +631,6 @@ MGAM-4;88G-M4;Null;Vale of the Silent
 MH9C-S;4BZ-R3;Null;Providence
 Miah;Parrosa;High;Kador
 MJ-5F9;VT-LHB;Null;Perrigen Falls
-MJYW-3;Prelle;Null;Cloud Ring
 MJYW-3;Prelle;Null;Cloud Ring
 MKD-O8;A-Z7C9;Null;Querious
 Moclinamaud;Pegeler;Low;Placid
@@ -700,7 +702,6 @@ Oberen;Heti;Low;Kador
 Obrolber;Osta;High;Heimatar
 Odin;Ryra;High;Devoid
 Odinesyn;Orvanne;High;Solitude
-Odinesyn;Orvanne;High;Solitude
 Ogaria;Elerelle;Low;Solitude
 OGL8-Q;XR9-LP;Null;Catch
 OGY-6D;K-JO26;Null;Querious
@@ -740,6 +741,7 @@ Paye;Anidaza;High;Tash-Murkon
 PE-H02;AJG-MV;Null;Esoteria
 PE-SAM;X7-FTR;Null;Perrigen Falls
 PEK-8Z;E-IFSA;Null;Tenerifis
+PEM-LC;8MJO-4;Null;Omist
 Pera;Emsek;High;Tash-Murkon
 Pertnineere;Elose;Low;Solitude
 Peyiri;Parrosa;High;Kador
@@ -902,7 +904,6 @@ U-QMOA;5HN-S5;Null;Cache
 U-RELP;O9X-CV;Null;Oasa
 U-TJ7Y;D-AWFI;Null;Deklein
 U104-3;DJ-XCW;Null;Wicked Creek
-U2-28D;02QH-A;Null;Scalding Pass
 U93O-A;FQ-COP;Null;Cache
 U9SE-N;DOCS-O;Null;Oasa
 U9U-TQ;YENX-U;Null;Immensea
@@ -918,6 +919,7 @@ Unel;Agiesseson;High;Sinq Laison
 UNJ-GX;V-4QJC;Null;Great Wildlands
 Uotila;Santenpaa;High;The Citadel
 Uoyonen;Okomon;High;The Forge
+Uplingur;Hevaka;Null;Derelik
 Ustnia;Moghiz;High;Kador
 UT-UZB;V-LQBF;Null;Great Wildlands
 Uusanen;Vaarma;Low;The Bleak Lands
@@ -1029,5 +1031,3 @@ ZOYW-O;S-B1E4;Null;Deklein
 ZQ-Z3Y;T-HHHT;Null;Catch
 ZXB-VC;NJU-QV;Null;Delve
 ZZK-VF;2FYX-H;Null;Outer Passage
-Uplingur;Hevaka;NULL;Derelik
-LTT-AP;6GU-AT;Null;Outer Passage
