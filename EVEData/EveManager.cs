@@ -2,9 +2,11 @@
 // EVE Manager
 //-----------------------------------------------------------------------
 
+//SMT_MOD_BEGIN
 using System;
 using System.Diagnostics;
 using System.Collections.Generic;
+//SMT_MOD_END
 using System.Data;
 using System.Globalization;
 using System.Numerics;
@@ -22,8 +24,10 @@ using HtmlAgilityPack;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+//SMT_MOD_BEGIN
 using EVEData.Utils.WindowsManager;
 using System.Reflection.Metadata;
+//SMT_MOD_END
 using ESI.NET.Models.Corporation;
 
 
@@ -93,8 +97,9 @@ namespace SMT.EVEData
 
             ServerInfo = new EVEData.Server();
             Coalitions = new List<Coalition>();
-
+//SMT_MOD_BEGIN
             smtWindowManager = new SMTWindowsManager();
+//SMT_MOD_END
 
         }
 
@@ -110,13 +115,16 @@ namespace SMT.EVEData
                 TimeSpan CharacterUpdateRate = TimeSpan.FromSeconds(1);
                 TimeSpan LowFreqUpdateRate = TimeSpan.FromMinutes(20);
                 TimeSpan SOVCampaignUpdateRate = TimeSpan.FromSeconds(30);
+//SMT_MOD_BEGIN
                 TimeSpan EveClientCheckFreqRate = TimeSpan.FromSeconds(30);
+//SMT_MOD_END
 
                 DateTime NextCharacterUpdate = DateTime.MinValue;
                 DateTime NextLowFreqUpdate = DateTime.MinValue;
                 DateTime NextSOVCampaignUpdate = DateTime.MinValue;
+//SMT_MOD_BEGIN
                 DateTime NextEveClientUpdate = DateTime.MinValue;
-
+//SMT_MOD_END
 
                 // ToDo : See if we can change this to PeriodicTimer.
                 //      If this runs too long or if we add to many check the size could pile up unintentionally.
@@ -152,12 +160,13 @@ namespace SMT.EVEData
                         UpdateServerInfo();
                         UpdateTheraConnections();
                     }
-
+//SMT_MOD_BEGIN
                     // Client Check
                     if ((NextEveClientUpdate - DateTime.Now).Minutes < 0)
                     {
                         NextEveClientUpdate = DateTime.Now + EveClientCheckFreqRate;
                         smtWindowManager.FetchAllRunningEveClients();
+//SMT_MOD_END
                     }
 
                     Thread.Sleep(100);
@@ -209,6 +218,7 @@ namespace SMT.EVEData
         /// </summary>
         public event CombatEventHandler CombatEvent;
 
+//SMT_MOD_BEGIN
         /// <summary>
         /// Special Rat Event Handler
         /// </summary>
@@ -218,6 +228,7 @@ namespace SMT.EVEData
         /// Special Rat Event
         /// </summary>
         public event SpecialRatEventHandler SpecialRatEvent;
+//SMT_MOD_END
 
         /// <summary>
         /// Sov Campaign Updated Event Handler
@@ -282,10 +293,12 @@ namespace SMT.EVEData
         #region Variables
         // Variables
 
+//SMT_MOD_BEGIN
         /// <summary>
         /// SMT windows management for opening specific eve clients
         /// </summary>
         private SMTWindowsManager smtWindowManager;
+//SMT_MOD_END
 
         public string EVELogFolder { get; set; }
 
@@ -470,8 +483,10 @@ namespace SMT.EVEData
             {
                 EsiUrl = "https://esi.evetech.net/",
                 DataSource = DataSource.Tranquility,
+//SMT_MOD_BEGIN
                 ClientId = "5fb7ba024fea41188a88479f3da20261",
                 SecretKey = "uhNVZrTgseUynnFy38Q6C5mIB4vNxlFo2cVcj9fo",
+//SMT_MOD_END
                 CallbackUrl = EveAppConfig.CallbackURL,
                 UserAgent = "SMT-map-app",
             });
@@ -517,9 +532,9 @@ namespace SMT.EVEData
             ActiveSovCampaigns = new List<SOVCampaign>();
 
             InitZKillFeed();
-
+//SMT_MOD_BEGIN
             smtWindowManager.FetchAllRunningEveClients();
-
+//SMT_MOD_END
             // Removed as the api site is down
             //UpdateCoalitionInfo();
 
@@ -3237,7 +3252,7 @@ namespace SMT.EVEData
                                     CombatEvent(characterName, line);
                                 }
                             }
-
+//SMT_MOD_BEGIN
                             if (line.Contains("cloak deactivates due to a pulse from a Mobile Observatory") || line.Contains("Your cloak deactivates due to proximity to"))
                             {
                                 if (ShipDecloakedEvent != null)
@@ -3258,6 +3273,7 @@ namespace SMT.EVEData
                                     RunNotificationLimiter(TimeSpan.FromSeconds(10));
                                 }
                             }
+//SMT_MOD_END
                         }
                     }
 
@@ -3532,7 +3548,7 @@ namespace SMT.EVEData
         }
 
         #endregion // Functions
-
+//SMT_MOD_BEGIN
         // ====================================================================================================
         #region BUSA Functions
         // Custom Busa Functions
@@ -3561,6 +3577,6 @@ namespace SMT.EVEData
         }
 
         #endregion
-
+//SMT_MOD_END
     }
 }

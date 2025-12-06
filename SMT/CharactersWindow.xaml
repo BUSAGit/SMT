@@ -146,7 +146,9 @@
                 <StackPanel Margin="1">
                     <CheckBox IsChecked="{Binding ObservatoryDecloakWarningEnabled}" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Content="Mobile Observatory Decloak" Margin="4" />
                     <CheckBox IsChecked="{Binding CombatWarningEnabled}" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Content="Combat" Margin="4" />
+<!--SMT_MOD_BEGIN-->
                     <CheckBox IsChecked="{Binding SpecialRatNotificationEnabled}" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Content="Special Rat Notification" Margin="4" />
+<!--SMT_MOD_END-->
                 </StackPanel>
             </GroupBox>
 

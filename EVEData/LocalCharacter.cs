@@ -51,9 +51,11 @@ namespace SMT.EVEData
 
         private bool m_isOnline;
 
+//SMT_MOD_BEGIN
         private bool m_ObservatoryDecloakWarningEnabled;
 
         private bool m_SpecialRatNotificationEnabled;
+//SMT_MOD_END
 
         private bool m_CombatWarningEnabled;
 
@@ -110,7 +112,9 @@ namespace SMT.EVEData
             IsOnline = true;
             CombatWarningEnabled = true;
             ObservatoryDecloakWarningEnabled = true;
+//SMT_MOD_BEGIN
             m_SpecialRatNotificationEnabled = false;
+//SMT_MOD_END
         }
 
         /// <summary>
@@ -129,7 +133,9 @@ namespace SMT.EVEData
 
             CombatWarningEnabled = false;
             ObservatoryDecloakWarningEnabled = true;
+//SMT_MOD_BEGIN
             m_SpecialRatNotificationEnabled = false;
+//SMT_MOD_END
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -219,7 +225,7 @@ namespace SMT.EVEData
                 OnPropertyChanged("ObservatoryDecloakWarningEnabled");
             }
         }
-
+//SMT_MOD_BEGIN
         public bool SpecialRatNotificationEnabled
         {
             get
@@ -232,7 +238,7 @@ namespace SMT.EVEData
                 OnPropertyChanged("SpecialRatNotificationEnabled");
             }
         }
-
+//SMT_MOD_END
 
 
         public bool CombatWarningEnabled

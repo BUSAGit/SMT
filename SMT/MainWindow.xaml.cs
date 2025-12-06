@@ -33,8 +33,9 @@ namespace SMT
         private Overlay overlayWindow;
 
         private MediaPlayer mediaPlayer;
+//SMT_MOD_BEGIN
         private MediaPlayer coinMediaPlayer;
-
+//SMT_MOD_END
         private PreferencesWindow preferencesWindow;
 
         private int uiRefreshCounter = 0;
@@ -65,9 +66,11 @@ namespace SMT
             Uri woopUri = new Uri(AppDomain.CurrentDomain.BaseDirectory + @"\Sounds\woop.mp3");
             mediaPlayer.Open(woopUri);
 
+//SMT_MOD_BEGIN
             coinMediaPlayer = new MediaPlayer();
             Uri coinUri = new Uri(AppDomain.CurrentDomain.BaseDirectory + @"\Sounds\coin.mp3");
             coinMediaPlayer.Open(coinUri);
+//SMT_MOD_END
 
             CharacterNameIDCache = new Dictionary<string, long>();
             CharacterIDNameCache = new Dictionary<long, string>();
@@ -291,8 +294,10 @@ namespace SMT
 
             EVEManager.IntelUpdatedEvent += OnIntelUpdated;
             EVEManager.GameLogAddedEvent += OnGamelogUpdated;
+//SMT_MOD_BEGIN
             EVEManager.ShipDecloakedEvent += OnShipDecloaked;
             EVEManager.SpecialRatEvent += OnSpecialRat;
+//SMT_MOD_END
 
 
             EVEManager.CombatEvent += OnCombatEvent;
@@ -355,12 +360,13 @@ namespace SMT
                         }
                     }
                 }
-
+//SMT_MOD_BEGIN
                 if (args.Contains("Rat"))
                 {
                     string charName = args["Rat"];
                     EVEManager.OpenEveClientWindow(charName);
                 }
+//SMT_MOD_END
             };
 
             using (System.Diagnostics.Process currentProcess = System.Diagnostics.Process.GetCurrentProcess())
@@ -1234,7 +1240,7 @@ namespace SMT
                 }
             }), DispatcherPriority.Normal);
         }
-
+//SMT_MOD_BEGIN
         private void OnShipDecloaked(string character, string text)
         {
             foreach (LocalCharacter lc in EVEManager.LocalCharacters)
@@ -1345,6 +1351,7 @@ namespace SMT
                 }
             }
         }
+//SMT_MOD_END
 
         private void OnCombatEvent(string character, string text)
         {

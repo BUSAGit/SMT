@@ -18,8 +18,10 @@ namespace SMT
         private bool m_MinimizeToTray;
         private bool m_CloseToTray;
 
+//SMT_MOD_BEGIN
         private bool m_AlwaysOpen;
         private bool m_DecloakResponse;
+//SMT_MOD_END
 
         private bool m_FlashWindow;
         private bool m_FlashWindowOnlyInDangerZone;
@@ -170,6 +172,7 @@ namespace SMT
             }
         }
 
+//SMT_MOD_BEGIN
         public bool AlwaysOpen
         {
             get
@@ -195,6 +198,7 @@ namespace SMT
                 OnPropertyChanged("DecloakResponse");
             }
         }
+//SMT_MOD_END
 
 
         public bool ShowTrigInvasions
